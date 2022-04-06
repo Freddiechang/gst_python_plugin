@@ -1,6 +1,7 @@
 #include "gst_saliency_info_meta.h"
 
 #include "string.h"
+#include "stdio.h"
 
 static gboolean gst_saliency_info_meta_init(GstMeta *meta, gpointer params, GstBuffer *buffer);
 static gboolean gst_saliency_info_meta_transform(GstBuffer *transbuf, GstMeta *meta, GstBuffer *buffer,
@@ -49,8 +50,8 @@ const GstMetaInfo *gst_saliency_info_meta_get_info(void)
 static gboolean gst_saliency_info_meta_init(GstMeta *meta, gpointer params, GstBuffer *buffer)
 {
     GstSaliencyInfoMeta *gst_saliency_info_meta = (GstSaliencyInfoMeta*)meta;     
-    gst_saliency_info_meta->gaussian_count = 0;
-    gst_saliency_info_meta->parameters = NULL;
+    gst_saliency_info_meta->info.gaussian_count = 0;
+    gst_saliency_info_meta->info.parameters = NULL;
     return TRUE;
 }
 
@@ -61,8 +62,8 @@ static gboolean gst_saliency_info_meta_transform(GstBuffer *transbuf, GstMeta *m
                                                GQuark type, gpointer data)
 {
     GstSaliencyInfoMeta *gst_saliency_info_meta = (GstSaliencyInfoMeta *)meta;
-    gst_saliency_add_saliency_info_meta(transbuf, gst_saliency_info_meta->gaussian_count, 
-    gst_saliency_info_meta->parameters);
+    gst_saliency_add_saliency_info_meta(transbuf, gst_saliency_info_meta->info.gaussian_count, 
+    gst_saliency_info_meta->info.parameters);
     return TRUE;
 }
 
@@ -82,16 +83,44 @@ GstSaliencyInfoMeta* gst_saliency_add_saliency_info_meta(GstBuffer *buffer, guin
     gst_saliency_info_meta = (GstSaliencyInfoMeta *) gst_buffer_add_meta (buffer, GST_SALIENCY_INFO_META_INFO, NULL);
 
     // copy fields to buffer's meta
-    gst_saliency_info_meta->gaussian_count = gaussian_count;
-    gst_saliency_info_meta->parameters = (gfloat *) malloc(sizeof(gfloat) * gaussian_count);
-    memcpy(gst_saliency_info_meta->parameters, parameters, sizeof(gfloat) * gaussian_count);
+    gst_saliency_info_meta->info.gaussian_count = gaussian_count;
+    gst_saliency_info_meta->info.parameters = (gfloat *) malloc(sizeof(gfloat) * gaussian_count * 6);
+    memcpy(gst_saliency_info_meta->info.parameters, parameters, sizeof(gfloat) * gaussian_count * 6);
+    //for(int i = 0; i < 6 * gaussian_count; i++)
+    //{
+    //    printf("%f, ", gst_saliency_info_meta->info.parameters[i]);
+    //}
 
     return gst_saliency_info_meta;
 }
 
 
-GstSaliencyInfoMeta* gst_saliency_get_saliency_info_meta(GstBuffer *b)
-{}
+GstSaliencyInfo* gst_saliency_get_saliency_info_meta(GstBuffer *buffer)
+{
+    // https://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstBuffer.html#gst-buffer-get-meta
+    GstSaliencyInfoMeta* meta = (GstSaliencyInfoMeta*)gst_buffer_get_meta((buffer), GST_SALIENCY_INFO_META_API_TYPE);
+    
+    if (meta == NULL)
+        return NULL;
+    else
+        return &meta->info; 
+}
 
 gboolean gst_saliency_remove_saliency_info_meta(GstBuffer *buffer)
-{}
+{
+    g_return_val_if_fail(GST_IS_BUFFER(buffer), NULL);
+
+    GstSaliencyInfoMeta* meta = (GstSaliencyInfoMeta*)gst_buffer_get_meta((buffer), GST_SALIENCY_INFO_META_API_TYPE);
+
+    if (meta == NULL)
+        return TRUE;
+    
+    if ( !gst_buffer_is_writable(buffer))
+        return FALSE;
+
+    meta->info.gaussian_count = 0;
+    free(meta->info.parameters);
+    meta->info.parameters = NULL;
+    // https://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstBuffer.html#gst-buffer-remove-meta
+    return gst_buffer_remove_meta(buffer, &meta->meta);
+}

@@ -22,8 +22,12 @@ typedef enum {
 #define GST_SALIENCY_INFO_META_INFO     (gst_saliency_info_meta_get_info())
  
 typedef struct _GstSaliencyInfoMeta  GstSaliencyInfoMeta;
+typedef struct _GstSaliencyInfo  GstSaliencyInfo;
 
-
+struct _GstSaliencyInfo {
+    guint gaussian_count;
+    gfloat *parameters;
+};
 
 struct _GstSaliencyInfoMeta {
 
@@ -32,8 +36,7 @@ struct _GstSaliencyInfoMeta {
     GstMeta meta;  
 
     // Custom fields
-    guint gaussian_count;
-    gfloat *parameters;
+    GstSaliencyInfo info;
 };  
 
 
@@ -49,8 +52,11 @@ GST_EXPORT
 gboolean gst_saliency_remove_saliency_info_meta(GstBuffer *buffer);
 
 GST_EXPORT 
-GstSaliencyInfoMeta* gst_saliency_get_saliency_info_meta(GstBuffer *b);
+GstSaliencyInfo* gst_saliency_get_saliency_info_meta(GstBuffer *buffer);
  
+GST_EXPORT
+gboolean gst_saliency_remove_saliency_info_meta(GstBuffer *buffer);
+
 G_END_DECLS
  
 #endif /* __GST_BUFFER_INFO_META_H__ */
