@@ -527,6 +527,9 @@ class Gaussian():
         for i in range(len(self.popt)//6):
             fit += self.gaussian(fit_x, *self.popt[i*6:i*6+6]).reshape(self.mask_size)
         return fit
+    
+    def from_parameters(self, popt):
+        self.popt = popt
 
 
 

@@ -3,9 +3,7 @@ https://github.com/jackersson/gst-python-hacks/blob/master/gst-metadata/gst_buff
 """
 import gi
 gi.require_version('Gst', '1.0')
-from gi.repository import Gst, GObject
 
-import sys
 from ctypes import cdll, c_uint, c_void_p, c_bool, c_float, cast, POINTER, Structure
 
 import numpy as np

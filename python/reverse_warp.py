@@ -21,7 +21,7 @@ Gst.init(None)
 FIXED_CAPS = Gst.Caps(Gst.Structure("video/x-raw", format=Gst.ValueList(["RGB"]), 
     width=Gst.IntRange(range(1, 20480)), height=Gst.IntRange(range(1, 20480))))
 
-class ExampleTransform(GstBase.BaseTransform):
+class ReverseWarp(GstBase.BaseTransform):
     __gstmetadata__ = ('Image Warping', 'Transform',
                       'Warp image using given saliency map', 'freddie')
 
@@ -120,19 +120,18 @@ class ExampleTransform(GstBase.BaseTransform):
         struct = incaps.get_structure(0)
         self.inwidth = struct.get_int("width").value
         self.inheight = struct.get_int("height").value
-        self.gaussian = Gaussian((self.inheight, self.inwidth))
+        self.gaussian = Gaussian((self.outheight, self.outwidth))
 
         return True
 
-    def update_saliency_map(self, frame_num):
-        sa = cv2.imread("/home/shupeizhang/Downloads/test/0012.png", cv2.IMREAD_GRAYSCALE)
-        self.gaussian.parameterize(sa, self.threshold)
+    def update_saliency_map(self, saliency_parameters):
+        self.gaussian.from_parameters(saliency_parameters)
         self.centers = self.gaussian.extract_centers()
         sa = self.gaussian.build_map_from_params()
-        s = (self.outheight/self.inheight, self.outwidth/self.inwidth)
-        self.scale = salient_scale(self.centers, (self.inheight, self.inwidth), s)
+        s = (self.inheight/self.outheight, self.inwidth/self.outwidth)
+        self.scale = salient_scale(self.centers, (self.outheight, self.outwidth), s)
         w = lambda x, y: rescale(x, *s)
-        self.mesh = Mesh(sa, self.threshold, (self.outheight, self.outwidth), self.quad_size, w)
+        self.mesh = Mesh(sa, self.threshold, (self.inheight, self.inwidth), self.quad_size, w)
         self.mesh.V = self.mesh.warped_vertices
         self.mesh.generate_mapping(self.weight, self.centers, self.scale)
 
@@ -143,15 +142,14 @@ class ExampleTransform(GstBase.BaseTransform):
                 A = np.ndarray(shape = (self.inheight, self.inwidth, 3), dtype = np.uint8, buffer = ininfo.data)
                 with outbuffer.map(Gst.MapFlags.WRITE) as outinfo:
                     if inbuffer.offset == 0:
-                        self.update_saliency_map(inbuffer.offset)
+                        self.update_saliency_map(get_saliency_meta(inbuffer))
                     B = np.ndarray(shape = (self.outheight, self.outwidth, 3), dtype = np.uint8, buffer = outinfo.data)
-                    B[:, :, :] = self.mesh.coor_warping(A)
-                    write_saliency_meta(outbuffer, self.gaussian.popt)
+                    B[:, :, :] = self.mesh.reverse_warping(A)
                 #A *= 0
             return Gst.FlowReturn.OK
         except Gst.MapError as e:
             Gst.error("Mapping error: %s" % e)
             return Gst.FlowReturn.ERROR
 
-GObject.type_register(ExampleTransform)
-__gstelementfactory__ = ("ExampleTransform", Gst.Rank.NONE, ExampleTransform)
+GObject.type_register(ReverseWarp)
+__gstelementfactory__ = ("ReverseWarp", Gst.Rank.NONE, ReverseWarp)
