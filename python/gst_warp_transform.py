@@ -13,6 +13,8 @@ gi.require_version('GstBase', '1.0')
 from gi.repository import Gst, GObject, GstBase
 
 import numpy as np
+from os.path import join
+from os import listdir
 
 from warp import *
 from gst_saliency_info_meta import *
@@ -74,8 +76,23 @@ class ExampleTransform(GstBase.BaseTransform):
                 256,
                 8,  # default
                 GObject.ParamFlags.READWRITE
-                )
+                ),
+        "sal_dir": (GObject.TYPE_STRING,
+                "Saliency map location",
+                "Saliency map location, string",
+                "./", # default
+                GObject.ParamFlags.READWRITE
+                ),
     }
+    def __init__(self) -> None:
+        print("invoking init")
+        self.outheight = 1
+        self.outwidth = 1
+        self.threshold = 10
+        self.weight = 5
+        self.quad_size = 8
+        self.sal_dir = "./"
+        self.sal_files = []
 
     def do_set_property(self, prop: GObject.GParamSpec, value):
         print("invoking do_set_property\n")
@@ -89,6 +106,8 @@ class ExampleTransform(GstBase.BaseTransform):
             self.weight = value
         elif prop.name == 'quad-size':
             self.quad_size = value
+        elif prop.name == 'sal-dir':
+            self.sal_dir = value
         else:
             raise AttributeError('unknown property %s' % prop.name)
     
@@ -125,6 +144,11 @@ class ExampleTransform(GstBase.BaseTransform):
         return True
 
     def update_saliency_map(self, frame_num):
+        # for mrcg2
+        # if len(self.sal_files) == 0:
+        #     self.sal_files = sorted([i for i in listdir(self.sal_dir) if i.endswith(".png")])
+        # fpath = join(self.sal_dir, self.sal_files[frame_num])
+        # sa = cv2.imread(fpath, cv2.IMREAD_GRAYSCALE)
         sa = cv2.imread("/home/shupeizhang/Downloads/test/0012.png", cv2.IMREAD_GRAYSCALE)
         self.gaussian.parameterize(sa, self.threshold)
         self.centers = self.gaussian.extract_centers()

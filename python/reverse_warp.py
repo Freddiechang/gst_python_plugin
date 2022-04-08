@@ -77,6 +77,13 @@ class ReverseWarp(GstBase.BaseTransform):
                 )
     }
 
+    def __init__(self) -> None:
+        self.outheight = 1
+        self.outwidth = 1
+        self.threshold = 10
+        self.weight = 5
+        self.quad_size = 8
+
     def do_set_property(self, prop: GObject.GParamSpec, value):
         print("invoking do_set_property\n")
         if prop.name == 'width':
