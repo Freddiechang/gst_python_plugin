@@ -83,6 +83,7 @@ class ReverseWarp(GstBase.BaseTransform):
         self.threshold = 10
         self.weight = 5
         self.quad_size = 8
+        self.frame_count = 0
 
     def do_set_property(self, prop: GObject.GParamSpec, value):
         print("invoking do_set_property\n")
@@ -148,10 +149,11 @@ class ReverseWarp(GstBase.BaseTransform):
                 # Create a NumPy ndarray from the memoryview and modify it in place:
                 A = np.ndarray(shape = (self.inheight, self.inwidth, 3), dtype = np.uint8, buffer = ininfo.data)
                 with outbuffer.map(Gst.MapFlags.WRITE) as outinfo:
-                    if inbuffer.offset == 0:
+                    if self.frame_count == 0:
                         self.update_saliency_map(get_saliency_meta(inbuffer))
                     B = np.ndarray(shape = (self.outheight, self.outwidth, 3), dtype = np.uint8, buffer = outinfo.data)
                     B[:, :, :] = self.mesh.reverse_warping(A)
+                    self.frame_count += 1
                 #A *= 0
             return Gst.FlowReturn.OK
         except Gst.MapError as e:

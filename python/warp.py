@@ -391,14 +391,23 @@ class Mesh():
             coors /= coors[2, :].reshape(1, -1)
             coors = np.stack([coors[1,:], coors[0,:]], axis=0)
             coors += src.min(axis=0).reshape(2,1)
-            w_x = coors_in_warped[0,:]
-            w_y = coors_in_warped[1,:]
+            #TODO interpolate for invalid points
+            # w_x = coors_in_warped[0,:]
+            # w_y = coors_in_warped[1,:]
+            # if not reverse:
+            #     valid = (w_x >= 0) * (w_x < self.target_size[0]) * (w_y >= 0) * (w_y < self.target_size[1])
+            # else:
+            #     valid = (w_x >= 0) * (w_x < self.height) * (w_y >= 0) * (w_y < self.width)
+            # coors_in_warped = coors_in_warped[:, valid]
+            # coors = coors[:,valid]
+
+
             if not reverse:
-                valid = (w_x >= 0) * (w_x < self.target_size[0]) * (w_y >= 0) * (w_y < self.target_size[1])
+                coors_in_warped[0, :] = np.clip(coors_in_warped[0, :], 0, self.target_size[0] - 1)
+                coors_in_warped[1, :] = np.clip(coors_in_warped[1, :], 0, self.target_size[1] - 1)
             else:
-                valid = (w_x >= 0) * (w_x < self.saliency_map.shape[0]) * (w_y >= 0) * (w_y < self.saliency_map.shape[1])
-            coors_in_warped = coors_in_warped[:, valid]
-            coors = coors[:,valid]
+                coors_in_warped[0, :] = np.clip(coors_in_warped[0, :], 0, self.height - 1)
+                coors_in_warped[1, :] = np.clip(coors_in_warped[1, :], 0, self.width - 1)
             mapping[(coors_in_warped[0,:], coors_in_warped[1,:])] = coors.T
         return mapping
 
@@ -451,9 +460,11 @@ class Mesh():
         """
         out_img = np.zeros((*self.target_size, 3), dtype=np.uint8)
         coordinates = np.round(self.coor_mapping).astype(int)
-        mask = np.nonzero(np.all(coordinates != -1, axis=2))
+        
+        #print("warp", np.sum(np.logical_not(mask)))
         coordinates[:,:, 0] = np.clip(coordinates[:,:, 0], 0, img.shape[0] - 1)
         coordinates[:,:, 1] = np.clip(coordinates[:,:, 1], 0, img.shape[1] - 1)
+        mask = np.nonzero(np.all(coordinates != -1, axis=2))
         filtered_coor = coordinates[mask]
         out_img[mask] = img[(filtered_coor[:,0], filtered_coor[:,1])]
         return out_img
@@ -468,9 +479,11 @@ class Mesh():
         """
         out_img = np.zeros((*self.saliency_map.shape, 3), dtype=np.uint8)
         coordinates = np.round(self.reverse_mapping).astype(int)
-        mask = np.nonzero(np.all(coordinates != -1, axis=2))
+        
+        #print("unwarp", np.sum(np.logical_not(mask)))
         coordinates[:,:, 0] = np.clip(coordinates[:,:, 0], 0, self.target_size[0] - 1)
         coordinates[:,:, 1] = np.clip(coordinates[:,:, 1], 0, self.target_size[1] - 1)
+        mask = np.nonzero(np.all(coordinates != -1, axis=2))
         filtered_coor = coordinates[mask]
         out_img[mask] = warped_img[(filtered_coor[:,0], filtered_coor[:,1])]
         return out_img

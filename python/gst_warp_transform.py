@@ -93,6 +93,7 @@ class ExampleTransform(GstBase.BaseTransform):
         self.quad_size = 8
         self.sal_dir = "./"
         self.sal_files = []
+        self.frame_count = 0
 
     def do_set_property(self, prop: GObject.GParamSpec, value):
         print("invoking do_set_property\n")
@@ -145,11 +146,11 @@ class ExampleTransform(GstBase.BaseTransform):
 
     def update_saliency_map(self, frame_num):
         # for mrcg2
-        # if len(self.sal_files) == 0:
-        #     self.sal_files = sorted([i for i in listdir(self.sal_dir) if i.endswith(".png")])
-        # fpath = join(self.sal_dir, self.sal_files[frame_num])
-        # sa = cv2.imread(fpath, cv2.IMREAD_GRAYSCALE)
-        sa = cv2.imread("/home/shupeizhang/Downloads/test/0012.png", cv2.IMREAD_GRAYSCALE)
+        if len(self.sal_files) == 0:
+            self.sal_files = sorted([i for i in listdir(self.sal_dir) if i.endswith(".png")])
+        fpath = join(self.sal_dir, self.sal_files[frame_num])
+        sa = cv2.imread(fpath, cv2.IMREAD_GRAYSCALE)
+        #sa = cv2.imread("/home/shupeizhang/Downloads/test/0012.png", cv2.IMREAD_GRAYSCALE)
         self.gaussian.parameterize(sa, self.threshold)
         self.centers = self.gaussian.extract_centers()
         sa = self.gaussian.build_map_from_params()
@@ -166,11 +167,12 @@ class ExampleTransform(GstBase.BaseTransform):
                 # Create a NumPy ndarray from the memoryview and modify it in place:
                 A = np.ndarray(shape = (self.inheight, self.inwidth, 3), dtype = np.uint8, buffer = ininfo.data)
                 with outbuffer.map(Gst.MapFlags.WRITE) as outinfo:
-                    if inbuffer.offset == 0:
-                        self.update_saliency_map(inbuffer.offset)
+                    if self.frame_count == 0:
+                        self.update_saliency_map(self.frame_count)
                     B = np.ndarray(shape = (self.outheight, self.outwidth, 3), dtype = np.uint8, buffer = outinfo.data)
                     B[:, :, :] = self.mesh.coor_warping(A)
                     write_saliency_meta(outbuffer, self.gaussian.popt)
+                    self.frame_count += 1
                 #A *= 0
             return Gst.FlowReturn.OK
         except Gst.MapError as e:
