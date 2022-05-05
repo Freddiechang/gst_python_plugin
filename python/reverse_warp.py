@@ -149,8 +149,7 @@ class ReverseWarp(GstBase.BaseTransform):
                 # Create a NumPy ndarray from the memoryview and modify it in place:
                 A = np.ndarray(shape = (self.inheight, self.inwidth, 3), dtype = np.uint8, buffer = ininfo.data)
                 with outbuffer.map(Gst.MapFlags.WRITE) as outinfo:
-                    if self.frame_count == 0:
-                        self.update_saliency_map(get_saliency_meta(inbuffer))
+                    self.update_saliency_map(get_saliency_meta(inbuffer))
                     B = np.ndarray(shape = (self.outheight, self.outwidth, 3), dtype = np.uint8, buffer = outinfo.data)
                     B[:, :, :] = self.mesh.reverse_warping(A)
                     self.frame_count += 1

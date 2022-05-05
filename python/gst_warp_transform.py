@@ -94,6 +94,7 @@ class ExampleTransform(GstBase.BaseTransform):
         self.sal_dir = "./"
         self.sal_files = []
         self.frame_count = 0
+        self.gaussian_backup = None
 
     def do_set_property(self, prop: GObject.GParamSpec, value):
         print("invoking do_set_property\n")
@@ -150,8 +151,15 @@ class ExampleTransform(GstBase.BaseTransform):
             self.sal_files = sorted([i for i in listdir(self.sal_dir) if i.endswith(".png")])
         fpath = join(self.sal_dir, self.sal_files[frame_num])
         sa = cv2.imread(fpath, cv2.IMREAD_GRAYSCALE)
+        if sa.shape != (self.inheight, self.inwidth):
+            sa = cv2.resize(sa, (self.inwidth, self.inheight))
         #sa = cv2.imread("/home/shupeizhang/Downloads/test/0012.png", cv2.IMREAD_GRAYSCALE)
-        self.gaussian.parameterize(sa, self.threshold)
+        try:
+            self.gaussian.parameterize(sa, self.threshold)
+        except:
+            self.gaussian = self.gaussian_backup
+        else:
+            self.gaussian_backup = self.gaussian
         self.centers = self.gaussian.extract_centers()
         sa = self.gaussian.build_map_from_params()
         s = (self.outheight/self.inheight, self.outwidth/self.inwidth)
@@ -167,8 +175,7 @@ class ExampleTransform(GstBase.BaseTransform):
                 # Create a NumPy ndarray from the memoryview and modify it in place:
                 A = np.ndarray(shape = (self.inheight, self.inwidth, 3), dtype = np.uint8, buffer = ininfo.data)
                 with outbuffer.map(Gst.MapFlags.WRITE) as outinfo:
-                    if self.frame_count == 0:
-                        self.update_saliency_map(self.frame_count)
+                    self.update_saliency_map(self.frame_count)
                     B = np.ndarray(shape = (self.outheight, self.outwidth, 3), dtype = np.uint8, buffer = outinfo.data)
                     B[:, :, :] = self.mesh.coor_warping(A)
                     write_saliency_meta(outbuffer, self.gaussian.popt)

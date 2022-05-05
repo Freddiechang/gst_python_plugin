@@ -23,6 +23,9 @@ class Mesh():
         """
         mask = saliency_map > threshold
         self.saliency_map = saliency_map
+        self.threshold_map = saliency_map.copy()
+        self.threshold_map[self.threshold_map > threshold] -= threshold
+        self.threshold_map = self.threshold_map.clip(threshold, 255)
         self.quad_size = quad_size
         self.W = W
         self.target_size = target_size
@@ -122,7 +125,7 @@ class Mesh():
                         v[j] = self.origin_vertices[quad_idx[j]]
                     lb = v.min(axis=0).astype(np.int)
                     ub = v.max(axis=0).astype(np.int)
-                    w = np.maximum(np.mean(saliency_map[lb[0]:ub[0],lb[1]:ub[1]]), w_f)
+                    w = np.mean(saliency_map[lb[0]:ub[0],lb[1]:ub[1]])
                 else:
                     w = w_f
             else:
@@ -159,10 +162,17 @@ class Mesh():
                     q_first = q
                     first = True
                 elif first and (not self.Q_label[q]):
-                    if type(centers) == np.ndarray:
-                        v = self.origin_vertices[self.idx_to_ncidx[self.Q[q][0]]].reshape(1, 2)
-                        d = np.sqrt(np.sum((v - centers) ** 2, axis=1).min())
-                        w = (d_max - d) / d_max * w_f
+                    if type(saliency_map) == np.ndarray:
+                        v = np.zeros((4, 2))
+                        for j in range(4):
+                            v[j] = self.origin_vertices[quad_idx[j]]
+                        lb = v.min(axis=0).astype(np.int)
+                        ub = v.max(axis=0).astype(np.int)
+                        w = np.mean(saliency_map[lb[0]:ub[0],lb[1]:ub[1]])
+                    # if type(centers) == np.ndarray:
+                    #     v = self.origin_vertices[self.idx_to_ncidx[self.Q[q][0]]].reshape(1, 2)
+                    #     d = np.sqrt(np.sum((v - centers) ** 2, axis=1).min())
+                    #     w = (d_max - d) / d_max * w_f
                     else:
                         w = 1
                     rows.append(row_counts)
@@ -190,10 +200,17 @@ class Mesh():
                     q_first = q
                     first = True
                 elif first and (not self.Q_label[q]):
-                    if type(centers) == np.ndarray:
-                        v = self.origin_vertices[self.idx_to_ncidx[self.Q[q][0]]].reshape(1, 2)
-                        d = np.sqrt(np.sum((v - centers) ** 2, axis=1).min())
-                        w = (d_max - d) / d_max * w_f
+                    if type(saliency_map) == np.ndarray:
+                        v = np.zeros((4, 2))
+                        for j in range(4):
+                            v[j] = self.origin_vertices[quad_idx[j]]
+                        lb = v.min(axis=0).astype(np.int)
+                        ub = v.max(axis=0).astype(np.int)
+                        w = np.mean(saliency_map[lb[0]:ub[0],lb[1]:ub[1]])
+                    # if type(centers) == np.ndarray:
+                    #     v = self.origin_vertices[self.idx_to_ncidx[self.Q[q][0]]].reshape(1, 2)
+                    #     d = np.sqrt(np.sum((v - centers) ** 2, axis=1).min())
+                    #     w = (d_max - d) / d_max * w_f
                     else:
                         w = 1
                     rows.append(row_counts)
@@ -242,7 +259,7 @@ class Mesh():
                         v[j] = self.origin_vertices[quad_idx[j]]
                     lb = v.min(axis=0).astype(np.int)
                     ub = v.max(axis=0).astype(np.int)
-                    w = np.maximum(np.mean(saliency_map[lb[0]:ub[0],lb[1]:ub[1]]), 1)
+                    w = np.mean(saliency_map[lb[0]:ub[0],lb[1]:ub[1]])
                 else:
                     w = w_f
                 r_count += 1
@@ -442,9 +459,9 @@ class Mesh():
 
     def generate_mapping(self, w_f, centers=None, scale=None):
         self.init_r(np.sum(self.Q_label != 0))
-        self.compute_L2(w_f, self.saliency_map, centers)
+        self.compute_L2(w_f, self.threshold_map, centers)
         self.V = self.warped_vertices.copy()
-        self.compute_b2(w_f, self.saliency_map, scale)
+        self.compute_b2(w_f, self.threshold_map, scale)
         self.solve_and_update()
         self.update_r2()
         self.coor_mapping = self.quad_to_coor()
