@@ -83,18 +83,27 @@ class ExampleTransform(GstBase.BaseTransform):
                 "./", # default
                 GObject.ParamFlags.READWRITE
                 ),
+        "sal_interval": (GObject.TYPE_INT64,
+                 "Saliency map interval",
+                 "Saliency map interval",
+                 1,
+                 20480,
+                 1,  # default
+                 GObject.ParamFlags.READWRITE
+                 ),
     }
     def __init__(self) -> None:
         print("invoking init")
         self.outheight = 1
         self.outwidth = 1
-        self.threshold = 10
+        self.threshold = 1
         self.weight = 5
         self.quad_size = 8
         self.sal_dir = "./"
         self.sal_files = []
         self.frame_count = 0
         self.gaussian_backup = None
+        self.sal_interval = 1
 
     def do_set_property(self, prop: GObject.GParamSpec, value):
         print("invoking do_set_property\n")
@@ -110,6 +119,8 @@ class ExampleTransform(GstBase.BaseTransform):
             self.quad_size = value
         elif prop.name == 'sal-dir':
             self.sal_dir = value
+        elif prop.name == 'sal-interval':
+            self.sal_interval = value
         else:
             raise AttributeError('unknown property %s' % prop.name)
     
@@ -148,7 +159,7 @@ class ExampleTransform(GstBase.BaseTransform):
     def update_saliency_map(self, frame_num):
         # for mrcg2
         if len(self.sal_files) == 0:
-            self.sal_files = sorted([i for i in listdir(self.sal_dir) if i.endswith(".png")])
+            self.sal_files = sorted([i for i in listdir(self.sal_dir) if i.endswith(".png") or i.endswith(".jpg")])
         fpath = join(self.sal_dir, self.sal_files[frame_num])
         sa = cv2.imread(fpath, cv2.IMREAD_GRAYSCALE)
         if sa.shape != (self.inheight, self.inwidth):
@@ -160,14 +171,17 @@ class ExampleTransform(GstBase.BaseTransform):
             self.gaussian = self.gaussian_backup
         else:
             self.gaussian_backup = self.gaussian
-        self.centers = self.gaussian.extract_centers()
         sa = self.gaussian.build_map_from_params()
         s = (self.outheight/self.inheight, self.outwidth/self.inwidth)
-        self.scale = salient_scale(self.centers, (self.inheight, self.inwidth), s)
-        w = lambda x, y: rescale(x, *s)
-        self.mesh = Mesh(sa, self.threshold, (self.outheight, self.outwidth), self.quad_size, w)
+        mask = sa > self.threshold
+        sa = self.gaussian.build_new_map_from_params()
+        sa -= self.threshold
+        sa = sa.clip(1, 255)
+        self.scale = salient_scale(mask, (self.inheight, self.inwidth), s)
+        w = lambda x, y: rescale(x, *s, (self.inheight, self.inwidth))
+        self.mesh = Mesh(sa, mask, (self.outheight, self.outwidth), self.quad_size, w)
         self.mesh.V = self.mesh.warped_vertices
-        self.mesh.generate_mapping(self.weight, self.centers, self.scale)
+        self.mesh.generate_mapping(self.weight, (self.inheight, self.inwidth), (self.outheight, self.outwidth), self.scale)
 
     def do_transform(self, inbuffer, outbuffer):
         try:
@@ -175,7 +189,8 @@ class ExampleTransform(GstBase.BaseTransform):
                 # Create a NumPy ndarray from the memoryview and modify it in place:
                 A = np.ndarray(shape = (self.inheight, self.inwidth, 3), dtype = np.uint8, buffer = ininfo.data)
                 with outbuffer.map(Gst.MapFlags.WRITE) as outinfo:
-                    self.update_saliency_map(self.frame_count)
+                    if self.frame_count % self.sal_interval == 0:
+                        self.update_saliency_map(self.frame_count)
                     B = np.ndarray(shape = (self.outheight, self.outwidth, 3), dtype = np.uint8, buffer = outinfo.data)
                     B[:, :, :] = self.mesh.coor_warping(A)
                     write_saliency_meta(outbuffer, self.gaussian.popt)

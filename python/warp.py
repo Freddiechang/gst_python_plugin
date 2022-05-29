@@ -13,19 +13,15 @@ import math
 
 
 class Mesh():
-    def __init__(self, saliency_map, threshold, target_size, quad_size, W):
+    def __init__(self, saliency_map, mask, target_size, quad_size, W):
         """
-        saliency_map: 2D saliency map (h, w)
-        threshold: threshold for saliency (>t -> salient)
+        saliency_map: 2D saliency map (h, w), with 1.5 x sigma
+        mask: threshold mask for saliency (original_saliency > threshold)
         target_size: target image size (h, w)
         quad_size: size of the quad
         W: warping function
         """
-        mask = saliency_map > threshold
         self.saliency_map = saliency_map
-        self.threshold_map = saliency_map.copy()
-        self.threshold_map[self.threshold_map > threshold] -= threshold
-        self.threshold_map = self.threshold_map.clip(threshold, 255)
         self.quad_size = quad_size
         self.W = W
         self.target_size = target_size
@@ -103,7 +99,7 @@ class Mesh():
 
 
 
-    def compute_L2(self, w_f, saliency_map=None, centers=None):
+    def compute_L2(self, w_f, saliency_map=None):
         """
         generate the left hand side matrix of the linear system (Ax = b)
         self: mesh
@@ -401,7 +397,7 @@ class Mesh():
             coors = np.stack(coors, axis=0)
             coors_in_warped = coors + dst_min.reshape(2, 1)
             
-            M = cv2.getPerspectiveTransform(new_src[:,::-1], new_dst[:,::-1])
+            M = cv2.getPerspectiveTransform(new_src[:,::-1], new_dst[:,::-1], cv2.DECOMP_SVD)
             M_inv = np.linalg.inv(M)
             coors = np.stack([coors[1,:], coors[0,:], np.ones((coors.shape[1]))], axis=0)
             coors = M_inv @ coors
@@ -457,13 +453,15 @@ class Mesh():
         
         self.V = ret
 
-    def generate_mapping(self, w_f, centers=None, scale=None):
+    def generate_mapping(self, w_f, original_size, compressed_size, scale=None):
         self.init_r(np.sum(self.Q_label != 0))
-        self.compute_L2(w_f, self.threshold_map, centers)
+        self.compute_L2(w_f, self.saliency_map)
         self.V = self.warped_vertices.copy()
-        self.compute_b2(w_f, self.threshold_map, scale)
+        self.compute_b2(w_f, self.saliency_map, scale)
         self.solve_and_update()
         self.update_r2()
+        s = np.array([compressed_size]) / np.array([original_size])
+        self.V += (np.array([compressed_size]) - 1) / 2
         self.coor_mapping = self.quad_to_coor()
         self.reverse_mapping = self.quad_to_coor(reverse=True)
     
@@ -510,7 +508,7 @@ class Gaussian():
     def __init__(self, mask_size):
         self.mask_size = mask_size
         params = cv2.SimpleBlobDetector_Params()
-        params.minThreshold = 1;
+        params.minThreshold = 1
         params.minDistBetweenBlobs = mask_size[0]//100
         self.detector = cv2.SimpleBlobDetector_create(params)
     
@@ -558,27 +556,47 @@ class Gaussian():
             fit += self.gaussian(fit_x, *self.popt[i*6:i*6+6]).reshape(self.mask_size)
         return fit
     
+    def build_new_map_from_params(self):
+        npopt = self.popt.copy()
+        fit = np.zeros(self.mask_size)
+        fit_x = np.where(fit == 0)
+        fit_x = np.stack(fit_x, axis=1)
+        for i in range(len(npopt)//6):
+            npopt[i*6 + 3:i*6+5] *= 1.5
+            fit += self.gaussian(fit_x, *npopt[i*6:i*6+6]).reshape(self.mask_size)
+        return fit
+    
     def from_parameters(self, popt):
         self.popt = popt
 
-
-
-def rescale(coor, height_multiplier, width_multiplier):
+def rescale3(coor, height_multiplier, width_multiplier, img_size):
     coor = coor.copy()
     if coor.shape == (2,):
-        coor[0] *= height_multiplier
-        coor[1] *= width_multiplier
+        coor[0] = coor[0] * height_multiplier
+        coor[1] = coor[1] * width_multiplier
     else:
-        coor[:, 0] *= height_multiplier
-        coor[:, 1] *= width_multiplier
+        coor[:, 0] = coor[:, 0] * height_multiplier
+        coor[:, 1] = coor[:, 1] * width_multiplier
+    return coor
+
+def rescale(coor, height_multiplier, width_multiplier, img_size):
+    coor = coor.copy()
+    if coor.shape == (2,):
+        coor[0] = (coor[0] - (img_size[0] - 1) / 2) * height_multiplier
+        coor[1] = (coor[1] - (img_size[1] - 1) / 2) * width_multiplier
+    else:
+        coor[:, 0] = (coor[:, 0] - (img_size[0] - 1) / 2) * height_multiplier
+        coor[:, 1] = (coor[:, 1] - (img_size[1] - 1) / 2) * width_multiplier
     return coor
 
 
 
 
-def salient_scale(center_points, shape, target_scale, margin=0.1):
-    lb = center_points.min(axis = 0)
-    ub = center_points.max(axis = 0)
+def salient_scale(mask, shape, target_scale, margin=0.1):
+    mask = np.where(mask != 0)
+    mask = np.stack(mask, axis=1)
+    lb = mask.min(axis = 0)
+    ub = mask.max(axis = 0)
     r = ((ub - lb) / np.array(shape).reshape(1, 2))
     r = r + 2 * margin
     required_scale = target_scale / r
