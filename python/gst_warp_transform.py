@@ -173,7 +173,7 @@ class ExampleTransform(GstBase.BaseTransform):
             self.gaussian_backup = self.gaussian
         sa = self.gaussian.build_map_from_params()
         s = (self.outheight/self.inheight, self.outwidth/self.inwidth)
-        mask = sa > self.threshold
+        mask = sa >= self.threshold
         sa = self.gaussian.build_new_map_from_params()
         sa -= self.threshold
         sa = sa.clip(1, 255)

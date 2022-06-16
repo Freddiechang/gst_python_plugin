@@ -147,7 +147,7 @@ class ReverseWarp(GstBase.BaseTransform):
         self.gaussian.from_parameters(saliency_parameters)
         self.centers = self.gaussian.extract_centers()
         sa = self.gaussian.build_map_from_params()
-        mask = sa > self.threshold
+        mask = sa >= self.threshold
         sa = self.gaussian.build_new_map_from_params()
         sa -= self.threshold
         sa = sa.clip(1, 255)

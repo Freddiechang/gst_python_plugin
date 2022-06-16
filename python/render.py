@@ -54,11 +54,14 @@ def process(path: str, target_ratio, quad_size: int, sal_interval: int):
 if __name__ == "__main__":
     #filelist = listdir("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/")
     #filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/", i) for i in filelist]
+    #nfilelist = filelist
     #filelist = [(i, (648, 364), 12) for i in filelist[0:3]]
     filelist = sorted(listdir("/home/shupeizhang/Codes/Datasets/saliency/DIEM/videos"))
     filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/DIEM/videos", i) for i in filelist]
+    # total 84
     # 0, 4, 12, 14, 21, 26
-    nfilelist = [filelist[i + 30] for i in [0, 4, 12, 14, 21, 26]]
-    filelist = [(i, (0.7, 0.7), 12, 5) for i in nfilelist[:10]]
+    # +0 +20 +40 +11 +31 +41
+    nfilelist = [filelist[i + 51] for i in [0, 4, 12, 14, 21, 26]]
+    filelist = [(i, (0.7, 0.7), 12, 5) for i in nfilelist]
     with Pool(processes=2) as pool:
         pool.starmap(process, filelist)
