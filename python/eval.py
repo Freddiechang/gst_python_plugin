@@ -1,5 +1,6 @@
-from os.path import join, getsize, isfile
+from os.path import join, getsize, isfile, isdir
 from os import listdir
+import os
 import subprocess as sp
 from multiprocessing import Pool
 from EWPSNR import ewpsnr
@@ -57,17 +58,106 @@ def process(path: str, target_ratio, out_filename):
     else:
         pass
 
-if __name__ == "__main__":
-    #filelist = listdir("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/")
-    #filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/", i) for i in filelist]
-    #nfilelist = filelist
+def avc_and_hevc(path: str, quality, method):
+    if 'UCF' in path:
+        filename = path.split('/')[-1]
+        print("working on {} q: {}".format(filename, quality))
+        img_path = join(path, 'images')
+        map_path = join(path, 'maps')
+        t = listdir(img_path)
+        t = sorted([i for i in t if i.endswith('.png')])
+        command = "ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of default=nw=1:nk=1 {}".format(join(img_path, t[0])).split(" ")
+        p = sp.run(command, capture_output=True)
+        width, height = p.stdout.decode().split("\n")[:2]
+        command = "ffmpeg -r 1/5 -i {0} -hide_banner -loglevel error -start_number 1 -c:v libx{1} -crf {2} {3}".format(
+            join(img_path, t[0][:-7] + "%03d.png"), 
+            method,
+            quality,
+            join("test", method, "UCF", "{}_q{:02d}.mp4".format(filename, quality))
+            )
+        if not isdir(join("test", method, "UCF")):
+            os.mkdir(join("test", method, "UCF"))
+        sp.run(command.split(' '))
+        if isfile(join("test", method, "UCF", "{}_q{:02d}.mp4".format(filename, quality))):
+            score = ewpsnr(join("test", method, "UCF", "{}_q{:02d}.mp4".format(filename, quality)), 
+                img_path, map_path)
+            bpp = getsize(join("test", method, "UCF", "{}_q{:02d}.mp4".format(filename, quality))) * 8 / score[0] / int(width) / int(height)
+            with open(method + ".txt", 'a') as f:
+                f.write("{}\t{}\t{}\t{}\n".format(
+                    filename,
+                    quality,
+                    bpp,
+                    score[1][0]
+                ))
 
-    filelist = sorted(listdir("/home/shupeizhang/Codes/Datasets/saliency/DIEM/videos"))
-    filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/DIEM/videos", i) for i in filelist]
+    elif 'ETMD' in path or 'SumMe' in path or 'DIEM' in path:
+        # path is the path to the video file
+        filename = path.split('/')[-1].split('.')[0]
+        for i in ['ETMD', 'SumMe', 'DIEM']:
+            if i in path:
+                dataset = i
+        vid_path = path
+        path = '/'.join(path.split('/')[:-2])
+        map_path = join(path, 'annotation', filename, 'maps')
+        command = "ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of default=nw=1:nk=1 {}".format(vid_path).split(" ")
+        p = sp.run(command, capture_output=True)
+        width, height = p.stdout.decode().split("\n")[:2]
+        command = "ffmpeg -i {0} -hide_banner -loglevel error -start_number 1 -c:v libx{1} -crf {2} {3}".format(
+            vid_path, 
+            method,
+            quality,
+            join("test", method, dataset, "{}_q{:02d}.mp4".format(filename, quality))
+            )
+        if not isdir(join("test", method, dataset)):
+            os.mkdir(join("test", method, dataset))
+        sp.run(command.split(' '))
+
+
+
+        if isfile(join("test", method, dataset, "{}_q{:02d}.mp4".format(filename, quality))):
+            score = ewpsnr(join("test", method, dataset, "{}_q{:02d}.mp4".format(filename, quality)), 
+                vid_path, map_path, 'jpg')
+            bpp = getsize(join("test", method, dataset, "{}_q{:02d}.mp4".format(filename, quality))) * 8 / score[0] / int(width) / int(height)
+            with open(method + ".txt", 'a') as f:
+                f.write("{}\t{}\t{}\t{}\n".format(
+                    filename,
+                    quality,
+                    bpp,
+                    score[1][0]
+                ))
+    else:
+        pass
+
+
+
+
+if __name__ == "__main__":
+    # filelist = listdir("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/")
+    # filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/", i) for i in filelist]
+    # nfilelist = filelist
+
+    # #filelist = sorted(listdir("/home/shupeizhang/Codes/Datasets/saliency/DIEM/videos"))
+    # #filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/DIEM/videos", i) for i in filelist]
+    # # total 84
+    # # 0, 4, 12, 14, 21, 26
+    # # +0 +20 +40 +11 +31 +41
+    # #nfilelist = [filelist[i + 51] for i in [0, 4, 12, 14, 21, 26]]
+    # filelist = [(i, (0.7, 0.7), 'diem.txt') for i in nfilelist]
+    # with Pool(processes=1) as pool:
+    #     pool.starmap(process, filelist)
+
+
+
+    filelist = listdir("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/")
+    filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/", i) for i in filelist]
+    nfilelist = filelist
+
+    #filelist = sorted(listdir("/home/shupeizhang/Codes/Datasets/saliency/DIEM/videos"))
+    #filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/DIEM/videos", i) for i in filelist]
     # total 84
     # 0, 4, 12, 14, 21, 26
     # +0 +20 +40 +11 +31 +41
-    nfilelist = [filelist[i + 51] for i in [0, 4, 12, 14, 21, 26]]
-    filelist = [(i, (0.7, 0.7), 'diem.txt') for i in nfilelist]
+    #nfilelist = [filelist[i + 51] for i in [0, 4, 12, 14, 21, 26]]
+    filelist = [(i, j, '264') for i in nfilelist for j in range(1, 51, 5)]
     with Pool(processes=1) as pool:
-        pool.starmap(process, filelist)
+        pool.starmap(avc_and_hevc, filelist)
