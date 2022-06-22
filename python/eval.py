@@ -9,7 +9,7 @@ from EWPSNR import ewpsnr
 gst-launch-1.0 filesrc location=./in.mp4 ! qtdemux ! avdec_h264 ! queue ! videoconvert  ! ExampleTransform width=504 height=300 quad_size=12 sal_dir=../../Datasets/UCF/training/Diving-Side-005/maps ! video/x-raw,width=504,height=300 ! ReverseWarp width=720 height=404 quad_size=12 ! videoconvert ! pngenc ! multifilesink location=out/%d.png
 """
 
-def process(path: str, target_ratio, out_filename):
+def process(path: str, target_ratio, quality, out_filename):
     if 'UCF' in path:
         filename = path.split('/')[-1]
         print("working on {}".format(filename))
@@ -21,13 +21,14 @@ def process(path: str, target_ratio, out_filename):
         p = sp.run(command, capture_output=True)
         width, height = p.stdout.decode().split("\n")[:2]
         target_size = (int(int(height) * target_ratio[0]), int(int(width) * target_ratio[1]))
-        if isfile("./test/out/UCF/{}_{}x{}.mp4".format(filename, target_size[1], target_size[0])):
-            score = ewpsnr("./test/out/UCF/{}_{}x{}.mp4".format(filename, target_size[1], target_size[0]), 
+        if isfile("./test/out/UCF/{}_{}x{}_q{:02d}.mp4".format(filename, target_size[1], target_size[0], quality)):
+            score = ewpsnr("./test/out/UCF/{}_{}x{}_q{:02d}.mp4".format(filename, target_size[1], target_size[0], quality), 
                 img_path, map_path)
-            bpp = getsize("./test/out/UCF/{}_{}x{}.mp4".format(filename, target_size[1], target_size[0])) * 8 / score[0] / int(width) / int(height)
+            bpp = getsize("./test/out/UCF_compressed/{}_{}x{}_q{:02d}.mp4".format(filename, target_size[1], target_size[0], quality)) * 8 / score[0] / int(width) / int(height)
             with open(out_filename, 'a') as f:
-                f.write("{}\t{}\t{}\n".format(
+                f.write("{}\t{}\t{}\t{}\n".format(
                     filename,
+                    quality,
                     bpp,
                     score[1][0]
                 ))
@@ -45,13 +46,14 @@ def process(path: str, target_ratio, out_filename):
         p = sp.run(command, capture_output=True)
         width, height = p.stdout.decode().split("\n")[:2]
         target_size = (int(int(height) * target_ratio[0]), int(int(width) * target_ratio[1]))
-        if isfile("./test/out/{}/{}_{}x{}.mp4".format(dataset, filename, target_size[1], target_size[0])):
-            score = ewpsnr("./test/out/{}/{}_{}x{}.mp4".format(dataset, filename, target_size[1], target_size[0]), 
+        if isfile("./test/out/{}/{}_{}x{}_q{:02d}.mp4".format(dataset, filename, target_size[1], target_size[0], quality)):
+            score = ewpsnr("./test/out/{}/{}_{}x{}_q{:02d}.mp4".format(dataset, filename, target_size[1], target_size[0], quality), 
                 vid_path, map_path, 'jpg')
-            bpp = getsize("./test/out/{}/{}_{}x{}.mp4".format(dataset, filename, target_size[1], target_size[0])) * 8 / score[0] / int(width) / int(height)
+            bpp = getsize("./test/out/{}_compressed/{}_{}x{}_q{:02d}.mp4".format(dataset, filename, target_size[1], target_size[0], quality)) * 8 / score[0] / int(width) / int(height)
             with open(out_filename, 'a') as f:
-                f.write("{}\t{}\t{}\n".format(
+                f.write("{}\t{}\t{}\t{}\n".format(
                     filename,
+                    quality,
                     bpp,
                     score[1][0]
                 ))
@@ -77,7 +79,8 @@ def avc_and_hevc(path: str, quality, method):
             )
         if not isdir(join("test", method, "UCF")):
             os.mkdir(join("test", method, "UCF"))
-        sp.run(command.split(' '))
+        if not isfile(join("test", method, "UCF", "{}_q{:02d}.mp4".format(filename, quality))):
+            sp.run(command.split(' '))
         if isfile(join("test", method, "UCF", "{}_q{:02d}.mp4".format(filename, quality))):
             score = ewpsnr(join("test", method, "UCF", "{}_q{:02d}.mp4".format(filename, quality)), 
                 img_path, map_path)
@@ -102,7 +105,7 @@ def avc_and_hevc(path: str, quality, method):
         command = "ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of default=nw=1:nk=1 {}".format(vid_path).split(" ")
         p = sp.run(command, capture_output=True)
         width, height = p.stdout.decode().split("\n")[:2]
-        command = "ffmpeg -i {0} -hide_banner -loglevel error -start_number 1 -c:v libx{1} -crf {2} {3}".format(
+        command = "ffmpeg -i {0} -hide_banner -loglevel error -c:v libx{1} -crf {2} {3}".format(
             vid_path, 
             method,
             quality,
@@ -110,7 +113,8 @@ def avc_and_hevc(path: str, quality, method):
             )
         if not isdir(join("test", method, dataset)):
             os.mkdir(join("test", method, dataset))
-        sp.run(command.split(' '))
+        if not isfile(join("test", method, dataset, "{}_q{:02d}.mp4".format(filename, quality))):
+            sp.run(command.split(' '))
 
 
 
@@ -132,22 +136,6 @@ def avc_and_hevc(path: str, quality, method):
 
 
 if __name__ == "__main__":
-    # filelist = listdir("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/")
-    # filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/", i) for i in filelist]
-    # nfilelist = filelist
-
-    # #filelist = sorted(listdir("/home/shupeizhang/Codes/Datasets/saliency/DIEM/videos"))
-    # #filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/DIEM/videos", i) for i in filelist]
-    # # total 84
-    # # 0, 4, 12, 14, 21, 26
-    # # +0 +20 +40 +11 +31 +41
-    # #nfilelist = [filelist[i + 51] for i in [0, 4, 12, 14, 21, 26]]
-    # filelist = [(i, (0.7, 0.7), 'diem.txt') for i in nfilelist]
-    # with Pool(processes=1) as pool:
-    #     pool.starmap(process, filelist)
-
-
-
     filelist = listdir("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/")
     filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/", i) for i in filelist]
     nfilelist = filelist
@@ -158,6 +146,22 @@ if __name__ == "__main__":
     # 0, 4, 12, 14, 21, 26
     # +0 +20 +40 +11 +31 +41
     #nfilelist = [filelist[i + 51] for i in [0, 4, 12, 14, 21, 26]]
-    filelist = [(i, j, '264') for i in nfilelist for j in range(1, 51, 5)]
+    filelist = [(i, (0.7, 0.7), j, 'ucf.txt') for i in nfilelist for j in [10, 16, 22, 28, 34, 40, 46, 51]]
     with Pool(processes=1) as pool:
-        pool.starmap(avc_and_hevc, filelist)
+        pool.starmap(process, filelist)
+
+
+
+    # filelist = listdir("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/")
+    # filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/", i) for i in filelist]
+    # nfilelist = filelist
+
+    # #filelist = sorted(listdir("/home/shupeizhang/Codes/Datasets/saliency/DIEM/videos"))
+    # #filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/DIEM/videos", i) for i in filelist]
+    # # total 84
+    # # 0, 4, 12, 14, 21, 26
+    # # +0 +20 +40 +11 +31 +41
+    # #nfilelist = [filelist[i + 51] for i in [0, 4, 12, 14, 21, 26]]
+    # filelist = [(i, j, '264') for i in nfilelist for j in range(1, 52, 5)]
+    # with Pool(processes=1) as pool:
+    #     pool.starmap(avc_and_hevc, filelist)
