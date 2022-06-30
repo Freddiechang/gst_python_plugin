@@ -13,6 +13,7 @@ gi.require_version('GstBase', '1.0')
 from gi.repository import Gst, GObject, GstBase
 
 import numpy as np
+from os.path import join
 
 from warp import *
 from gst_saliency_info_meta import *
@@ -83,6 +84,12 @@ class ReverseWarp(GstBase.BaseTransform):
                  1,  # default
                  GObject.ParamFlags.READWRITE
                  ),
+        "popt_dir": (GObject.TYPE_STRING,
+                "Saliency popt location",
+                "Saliency popt location, string",
+                "./", # default
+                GObject.ParamFlags.READWRITE
+                ),
     }
 
     def __init__(self) -> None:
@@ -93,6 +100,7 @@ class ReverseWarp(GstBase.BaseTransform):
         self.quad_size = 8
         self.frame_count = 0
         self.sal_interval = 1
+        self.popt_dir = "./"
 
     def do_set_property(self, prop: GObject.GParamSpec, value):
         print("invoking do_set_property\n")
@@ -108,6 +116,8 @@ class ReverseWarp(GstBase.BaseTransform):
             self.quad_size = value
         elif prop.name == 'sal-interval':
             self.sal_interval = value
+        elif prop.name == 'popt-dir':
+            self.save_popt = value
         else:
             raise AttributeError('unknown property %s' % prop.name)
     
@@ -165,7 +175,11 @@ class ReverseWarp(GstBase.BaseTransform):
                 A = np.ndarray(shape = (self.inheight, self.inwidth, 3), dtype = np.uint8, buffer = ininfo.data)
                 with outbuffer.map(Gst.MapFlags.WRITE) as outinfo:
                     if self.frame_count % self.sal_interval == 0:
-                        self.update_saliency_map(get_saliency_meta(inbuffer))
+                        if self.popt_dir != "./":
+                            popt = np.load(join(self.popt_dir, "{}_popt.npy".format(self.frame_count)))
+                        else:
+                            popt = get_saliency_meta(inbuffer)
+                        self.update_saliency_map(popt)
                     B = np.ndarray(shape = (self.outheight, self.outwidth, 3), dtype = np.uint8, buffer = outinfo.data)
                     B[:, :, :] = self.mesh.reverse_warping(A)
                     self.frame_count += 1

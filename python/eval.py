@@ -26,7 +26,7 @@ def process(path: str, target_ratio, quality, out_filename):
                 img_path, map_path)
             command = "ffprobe -v error -select_streams v:0 -show_entries stream=bit_rate,r_frame_rate -of default=nw=1:nk=1 {}".format("./test/out/UCF_compressed/{}_{}x{}_q{:02d}.mp4".format(filename, target_size[1], target_size[0], quality)).split(" ")
             p = sp.run(command, capture_output=True)
-            bitrate, framerate = p.stdout.decode().split('\n')[:2]
+            framerate, bitrate = p.stdout.decode().split('\n')[:2]
             bitrate = int(bitrate)
             framerate = framerate.split('/')
             framerate = int(framerate[0]) / int(framerate[1])
@@ -57,7 +57,7 @@ def process(path: str, target_ratio, quality, out_filename):
                 vid_path, map_path, 'jpg')
             command = "ffprobe -v error -select_streams v:0 -show_entries stream=bit_rate,r_frame_rate -of default=nw=1:nk=1 {}".format("./test/out/{}_compressed/{}_{}x{}_q{:02d}.mp4".format(dataset, filename, target_size[1], target_size[0], quality)).split(" ")
             p = sp.run(command, capture_output=True)
-            bitrate, framerate = p.stdout.decode().split('\n')[:2]
+            framerate, bitrate = p.stdout.decode().split('\n')[:2]
             bitrate = int(bitrate)
             framerate = framerate.split('/')
             framerate = int(framerate[0]) / int(framerate[1])
@@ -234,7 +234,7 @@ def avc_and_hevc_match(path: str, quality, method):
         command = "ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of default=nw=1:nk=1 {}".format(join(img_path, t[0])).split(" ")
         p = sp.run(command, capture_output=True)
         width, height = p.stdout.decode().split("\n")[:2]
-        filelist = [i for i in listdir(join("test", "out", "UCF_compressed")) if i.startswith(filename) and i.endswith("q{:02d}.mp4".format(filename, quality))]
+        filelist = [i for i in listdir(join("test", "out", "UCF_compressed")) if i.startswith(filename) and i.endswith("q{:02d}.mp4".format(quality))]
         if len(filelist) == 1:
             command = "ffprobe -v error -select_streams v:0 -show_entries stream=bit_rate -of default=nw=1:nk=1 {}".format(join("test", "out", "UCF_compressed", filelist[0])).split(" ")
             p = sp.run(command, capture_output=True)
@@ -257,7 +257,7 @@ def avc_and_hevc_match(path: str, quality, method):
                     img_path, map_path)
                 command = "ffprobe -v error -select_streams v:0 -show_entries stream=bit_rate,r_frame_rate -of default=nw=1:nk=1 {}".format(join("test", method, "UCF", "{}_q{:02d}.mp4".format(filename, quality))).split(" ")
                 p = sp.run(command, capture_output=True)
-                bitrate, framerate = p.stdout.decode().split('\n')[:2]
+                framerate, bitrate = p.stdout.decode().split('\n')[:2]
                 bitrate = int(bitrate)
                 framerate = framerate.split('/')
                 framerate = int(framerate[0]) / int(framerate[1])
@@ -282,7 +282,7 @@ def avc_and_hevc_match(path: str, quality, method):
         command = "ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of default=nw=1:nk=1 {}".format(vid_path).split(" ")
         p = sp.run(command, capture_output=True)
         width, height = p.stdout.decode().split("\n")[:2]
-        filelist = [i for i in listdir(join("test", "out", dataset +"_compressed")) if i.startswith(filename) and i.endswith("q{:02d}.mp4".format(filename, quality))]
+        filelist = [i for i in listdir(join("test", "out", dataset +"_compressed")) if i.startswith(filename) and i.endswith("q{:02d}.mp4".format(quality))]
         if len(filelist) == 1:
             command = "ffprobe -v error -select_streams v:0 -show_entries stream=bit_rate -of default=nw=1:nk=1 {}".format(join("test", "out", dataset + "_compressed", filelist[0])).split(" ")
             p = sp.run(command, capture_output=True)
@@ -306,7 +306,7 @@ def avc_and_hevc_match(path: str, quality, method):
                     vid_path, map_path, 'jpg')
                 command = "ffprobe -v error -select_streams v:0 -show_entries stream=bit_rate,r_frame_rate -of default=nw=1:nk=1 {}".format(join("test", method, dataset, "{}_q{:02d}.mp4".format(filename, quality))).split(" ")
                 p = sp.run(command, capture_output=True)
-                bitrate, framerate = p.stdout.decode().split('\n')[:2]
+                framerate, bitrate = p.stdout.decode().split('\n')[:2]
                 bitrate = int(bitrate)
                 framerate = framerate.split('/')
                 framerate = int(framerate[0]) / int(framerate[1])
@@ -335,7 +335,7 @@ if __name__ == "__main__":
     # 0, 4, 12, 14, 21, 26
     # +0 +20 +40 +11 +31 +41
     #nfilelist = [filelist[i + 51] for i in [0, 4, 12, 14, 21, 26]]
-    filelist = [(i, (0.7, 0.7), j, 'ucf.txt') for i in nfilelist for j in [10, 16, 22, 28, 34, 40, 46, 50]]
+    filelist = [(i, (0.7, 0.7), j, 'ucf.txt') for i in nfilelist for j in [10, 22, 34, 46, 50]]
     with Pool(processes=1) as pool:
         pool.starmap(process, filelist)
 

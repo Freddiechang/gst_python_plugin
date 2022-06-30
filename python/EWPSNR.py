@@ -23,7 +23,7 @@ class ImagesReader():
         return self.counter < self.total
 
 def ewpsnr(src_path: str, ref_path: str, saliency_map_path: str, saliency_ext='png'):
-    if src_path.endswith(".mp4"):
+    if src_path.endswith(".mp4") or src_path.endswith(".mkv"):
         src = cv2.VideoCapture(src_path)
     else:
         src = ImagesReader(src_path)
@@ -36,6 +36,7 @@ def ewpsnr(src_path: str, ref_path: str, saliency_map_path: str, saliency_ext='p
     sal = ImagesReader(saliency_map_path, ext=saliency_ext)
     total_ewpsnr = np.zeros((1))
     count = 0
+    count_nnan = 0
 
     while sal.isOpened():
         src_frame = src.read()[1]
@@ -49,9 +50,11 @@ def ewpsnr(src_path: str, ref_path: str, saliency_map_path: str, saliency_ext='p
         total_pix = src_frame.shape[0] * src_frame.shape[1]
         mse = (sal_frame * np.square(src_frame - ref_frame)).sum() / total_pix
         psnr = 10 * np.log10(255 * 255 / mse)
-        total_ewpsnr += psnr
+        if not np.isnan(psnr):
+            total_ewpsnr += psnr
+            count_nnan += 1
         count += 1
 
     src.release()
     ref.release()
-    return (count, total_ewpsnr / count)
+    return (count, total_ewpsnr / count_nnan)

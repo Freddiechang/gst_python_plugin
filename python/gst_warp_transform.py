@@ -91,6 +91,12 @@ class ExampleTransform(GstBase.BaseTransform):
                  1,  # default
                  GObject.ParamFlags.READWRITE
                  ),
+        "popt_dir": (GObject.TYPE_STRING,
+                "Saliency popt location",
+                "Saliency popt location, string",
+                "./", # default
+                GObject.ParamFlags.READWRITE
+                ),
     }
     def __init__(self) -> None:
         print("invoking init")
@@ -104,6 +110,7 @@ class ExampleTransform(GstBase.BaseTransform):
         self.frame_count = 0
         self.gaussian_backup = None
         self.sal_interval = 1
+        self.popt_dir = "./"
 
     def do_set_property(self, prop: GObject.GParamSpec, value):
         print("invoking do_set_property\n")
@@ -121,6 +128,8 @@ class ExampleTransform(GstBase.BaseTransform):
             self.sal_dir = value
         elif prop.name == 'sal-interval':
             self.sal_interval = value
+        elif prop.name == 'popt-dir':
+            self.save_popt = value
         else:
             raise AttributeError('unknown property %s' % prop.name)
     
@@ -194,6 +203,8 @@ class ExampleTransform(GstBase.BaseTransform):
                     B = np.ndarray(shape = (self.outheight, self.outwidth, 3), dtype = np.uint8, buffer = outinfo.data)
                     B[:, :, :] = self.mesh.coor_warping(A)
                     write_saliency_meta(outbuffer, self.gaussian.popt)
+                    if self.popt_dir != "./":
+                        np.save(join(self.popt_dir, "{}_popt.npy".format(self.frame_count)), self.gaussian.popt)
                     self.frame_count += 1
                 #A *= 0
             return Gst.FlowReturn.OK
