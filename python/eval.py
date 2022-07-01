@@ -234,24 +234,48 @@ def avc_and_hevc_match(path: str, quality, method):
         command = "ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of default=nw=1:nk=1 {}".format(join(img_path, t[0])).split(" ")
         p = sp.run(command, capture_output=True)
         width, height = p.stdout.decode().split("\n")[:2]
-        filelist = [i for i in listdir(join("test", "out", "UCF_compressed")) if i.startswith(filename) and i.endswith("q{:02d}.mp4".format(quality))]
+        filelist = [i for i in listdir(join("test", "out", "UCF_compressed_raw")) if i.startswith(filename) and i.endswith(".mkv")]
+        command = "ffmpeg -hide_banner -loglevel error -f lavfi -i {0} -c:v libx264 -preset slow -crf {1} -pix_fmt yuv420p {2}".format(
+            join("test", "out", "UCF_compressed_raw", filelist[0]),
+            quality,
+            join("test", "out", "UCF_compressed_from_raw", filelist[0][:-4] + "_q{:02d}.mkv".format(quality))
+        )
+        p = sp.run(command, capture_output=True)
+        print(p.stdout.decode(), p.stderr.decode())
+        filelist = [i for i in listdir(join("test", "out", "UCF_compressed_from_raw")) if i.startswith(filename) and i.endswith("q{:02d}.mp4".format(quality))]
         if len(filelist) == 1:
-            command = "ffprobe -v error -select_streams v:0 -show_entries stream=bit_rate -of default=nw=1:nk=1 {}".format(join("test", "out", "UCF_compressed", filelist[0])).split(" ")
+            command = "ffprobe -v error -select_streams v:0 -show_entries stream=bit_rate -of default=nw=1:nk=1 {}".format(join("test", "out", "UCF_compressed_from_raw", filelist[0])).split(" ")
             p = sp.run(command, capture_output=True)
+            # kbits/sec
             bitrate = round(int(p.stdout.decode()) / 1000)
+            #pass 1
             if method == '264':
-                encoder = 'x264enc bitrate={}'.format(bitrate)
+                encoder = '-c:v libx264 -b:v {}k -pass 1'.format(bitrate)
             elif method == '265':
-                encoder = 'x265enc option-string="crf:{}"'.format(quality)
-            command = 'gst-launch-1.0 multifilesrc location={0} start-index=1 caps="image/png,framerate=10/1" ! pngdec ! queue ! videoconvert ! queue ! {1} ! mp4mux ! filesink location={2}'.format(
+                encoder = '-c:v libx265 -b:v {}k -x265-params pass=1'.format(quality)
+            command = 'ffmpeg -hide_banner -loglevel error -i {0} -start_number 1 {2} -f null /dev/null'.format(
                 join(img_path, t[0][:-7] + "%03d.png"), 
-                encoder,
-                join("test", method, "UCF", "{}_q{:02d}.mp4".format(filename, quality))
+                encoder
                 )
             if not isdir(join("test", method, "UCF")):
                 os.mkdir(join("test", method, "UCF"))
             if not isfile(join("test", method, "UCF", "{}_q{:02d}.mp4".format(filename, quality))):
-                sp.run(command.split(' '))
+                p = sp.run(command.split(' '), capture_output=True)
+                print(p.stdout.decode(), p.stderr.decode())
+            #pass 2
+            if method == '264':
+                encoder = '-c:v libx264 -b:v {}k -pass 2'.format(bitrate)
+            elif method == '265':
+                encoder = '-c:v libx265 -b:v {}k -x265-params pass=2'.format(quality)
+            command = 'ffmpeg -hide_banner -loglevel error -i {0} -start_number 1 {2} {3}'.format(
+                join(img_path, t[0][:-7] + "%03d.png"), 
+                encoder,
+                join("test", method, "UCF", "{}_q{:02d}.mp4".format(filename, quality))
+                )
+            if not isfile(join("test", method, "UCF", "{}_q{:02d}.mp4".format(filename, quality))):
+                p = sp.run(command.split(' '), capture_output=True)
+                print(p.stdout.decode(), p.stderr.decode())
+
             if isfile(join("test", method, "UCF", "{}_q{:02d}.mp4".format(filename, quality))):
                 score = ewpsnr(join("test", method, "UCF", "{}_q{:02d}.mp4".format(filename, quality)), 
                     img_path, map_path)
@@ -282,24 +306,47 @@ def avc_and_hevc_match(path: str, quality, method):
         command = "ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of default=nw=1:nk=1 {}".format(vid_path).split(" ")
         p = sp.run(command, capture_output=True)
         width, height = p.stdout.decode().split("\n")[:2]
+        filelist = [i for i in listdir(join("test", "out", dataset +"_compressed_raw")) if i.startswith(filename) and i.endswith(".mkv")]
+        command = "ffmpeg -hide_banner -loglevel error -f lavfi -i {0} -c:v libx264 -preset slow -crf {1} -pix_fmt yuv420p {2}".format(
+            join("test", "out", dataset + "_compressed_raw", filelist[0]),
+            quality,
+            join("test", "out", dataset + "_compressed_from_raw", filelist[0][:-4] + "_q{:02d}.mkv".format(quality))
+        )
+        p = sp.run(command, capture_output=True)
+        print(p.stdout.decode(), p.stderr.decode())
         filelist = [i for i in listdir(join("test", "out", dataset +"_compressed")) if i.startswith(filename) and i.endswith("q{:02d}.mp4".format(quality))]
         if len(filelist) == 1:
             command = "ffprobe -v error -select_streams v:0 -show_entries stream=bit_rate -of default=nw=1:nk=1 {}".format(join("test", "out", dataset + "_compressed", filelist[0])).split(" ")
             p = sp.run(command, capture_output=True)
             bitrate = round(int(p.stdout.decode()) / 1000)
+            #pass 1
             if method == '264':
-                encoder = 'x264enc bitrate={}'.format(bitrate)
+                encoder = '-c:v libx264 -b:v {}k -pass 1'.format(bitrate)
             elif method == '265':
-                encoder = 'x265enc option-string="crf:{}"'.format(quality)
-            command = 'gst-launch-1.0 filesrc location={0} ! qtdemux ! avdec_h264 ! queue ! videoconvert ! queue ! {1} ! mp4mux ! filesink location={2}'.format(
-                vid_path,
-                encoder,
-                join("test", method, dataset, "{}_q{:02d}.mp4".format(filename, quality))
+                encoder = '-c:v libx265 -b:v {}k -x265-params pass=1'.format(quality)
+            command = 'ffmpeg -hide_banner -loglevel error -i {0} -start_number 1 {2} -f null /dev/null'.format(
+                vid_path, 
+                encoder
                 )
             if not isdir(join("test", method, dataset)):
                 os.mkdir(join("test", method, dataset))
             if not isfile(join("test", method, dataset, "{}_q{:02d}.mp4".format(filename, quality))):
-                sp.run(command.split(' '))
+                p = sp.run(command.split(' '), capture_output=True)
+                print(p.stdout.decode(), p.stderr.decode())
+            #pass 2
+            if method == '264':
+                encoder = '-c:v libx264 -b:v {}k -pass 2'.format(bitrate)
+            elif method == '265':
+                encoder = '-c:v libx265 -b:v {}k -x265-params pass=2'.format(quality)
+            command = 'ffmpeg -hide_banner -loglevel error -i {0} -start_number 1 {2} {3}'.format(
+                vid_path, 
+                encoder,
+                join("test", method, dataset, "{}_q{:02d}.mp4".format(filename, quality))
+                )
+            if not isfile(join("test", method, dataset, "{}_q{:02d}.mp4".format(filename, quality))):
+                p = sp.run(command.split(' '), capture_output=True)
+                print(p.stdout.decode(), p.stderr.decode())
+            
 
             if isfile(join("test", method, dataset, "{}_q{:02d}.mp4".format(filename, quality))):
                 score = ewpsnr(join("test", method, dataset, "{}_q{:02d}.mp4".format(filename, quality)), 
