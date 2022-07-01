@@ -235,25 +235,25 @@ def avc_and_hevc_match(path: str, quality, method):
         p = sp.run(command, capture_output=True)
         width, height = p.stdout.decode().split("\n")[:2]
         filelist = [i for i in listdir(join("test", "out", "UCF_compressed_raw")) if i.startswith(filename) and i.endswith(".mkv")]
-        command = "ffmpeg -hide_banner -loglevel error -f lavfi -i {0} -c:v libx264 -preset slow -crf {1} -pix_fmt yuv420p {2}".format(
+        command = "ffmpeg -y -hide_banner -loglevel error -i {0} -c:v libx264 -preset slow -crf {1} -pix_fmt yuv420p {2}".format(
             join("test", "out", "UCF_compressed_raw", filelist[0]),
             quality,
-            join("test", "out", "UCF_compressed_from_raw", filelist[0][:-4] + "_q{:02d}.mkv".format(quality))
+            join("test", "out", "UCF_compressed_from_raw", filelist[0][:-4] + "_q{:02d}.mp4".format(quality))
         )
-        p = sp.run(command, capture_output=True)
+        p = sp.run(command.split(' '), capture_output=True)
         print(p.stdout.decode(), p.stderr.decode())
         filelist = [i for i in listdir(join("test", "out", "UCF_compressed_from_raw")) if i.startswith(filename) and i.endswith("q{:02d}.mp4".format(quality))]
         if len(filelist) == 1:
             command = "ffprobe -v error -select_streams v:0 -show_entries stream=bit_rate -of default=nw=1:nk=1 {}".format(join("test", "out", "UCF_compressed_from_raw", filelist[0])).split(" ")
             p = sp.run(command, capture_output=True)
             # kbits/sec
-            bitrate = round(int(p.stdout.decode()) / 1000)
+            bitrate = int(p.stdout.decode())
             #pass 1
             if method == '264':
-                encoder = '-c:v libx264 -b:v {}k -pass 1'.format(bitrate)
+                encoder = '-c:v libx264 -b:v {} -pass 1'.format(bitrate)
             elif method == '265':
-                encoder = '-c:v libx265 -b:v {}k -x265-params pass=1'.format(quality)
-            command = 'ffmpeg -hide_banner -loglevel error -i {0} -start_number 1 {2} -f null /dev/null'.format(
+                encoder = '-c:v libx265 -b:v {} -x265-params pass=1'.format(bitrate)
+            command = 'ffmpeg -hide_banner -loglevel error -r 10/1 -i {0} -start_number 1 {1} -f null /dev/null'.format(
                 join(img_path, t[0][:-7] + "%03d.png"), 
                 encoder
                 )
@@ -264,10 +264,10 @@ def avc_and_hevc_match(path: str, quality, method):
                 print(p.stdout.decode(), p.stderr.decode())
             #pass 2
             if method == '264':
-                encoder = '-c:v libx264 -b:v {}k -pass 2'.format(bitrate)
+                encoder = '-c:v libx264 -b:v {} -pass 2'.format(bitrate)
             elif method == '265':
-                encoder = '-c:v libx265 -b:v {}k -x265-params pass=2'.format(quality)
-            command = 'ffmpeg -hide_banner -loglevel error -i {0} -start_number 1 {2} {3}'.format(
+                encoder = '-c:v libx265 -b:v {} -x265-params pass=2'.format(bitrate)
+            command = 'ffmpeg -hide_banner -loglevel error -r 10/1 -i {0} -start_number 1 {1} {2}'.format(
                 join(img_path, t[0][:-7] + "%03d.png"), 
                 encoder,
                 join("test", method, "UCF", "{}_q{:02d}.mp4".format(filename, quality))
@@ -307,10 +307,10 @@ def avc_and_hevc_match(path: str, quality, method):
         p = sp.run(command, capture_output=True)
         width, height = p.stdout.decode().split("\n")[:2]
         filelist = [i for i in listdir(join("test", "out", dataset +"_compressed_raw")) if i.startswith(filename) and i.endswith(".mkv")]
-        command = "ffmpeg -hide_banner -loglevel error -f lavfi -i {0} -c:v libx264 -preset slow -crf {1} -pix_fmt yuv420p {2}".format(
+        command = "ffmpeg -hide_banner -loglevel error -i {0} -c:v libx264 -preset slow -crf {1} -pix_fmt yuv420p {2}".format(
             join("test", "out", dataset + "_compressed_raw", filelist[0]),
             quality,
-            join("test", "out", dataset + "_compressed_from_raw", filelist[0][:-4] + "_q{:02d}.mkv".format(quality))
+            join("test", "out", dataset + "_compressed_from_raw", filelist[0][:-4] + "_q{:02d}.mp4".format(quality))
         )
         p = sp.run(command, capture_output=True)
         print(p.stdout.decode(), p.stderr.decode())
@@ -318,13 +318,13 @@ def avc_and_hevc_match(path: str, quality, method):
         if len(filelist) == 1:
             command = "ffprobe -v error -select_streams v:0 -show_entries stream=bit_rate -of default=nw=1:nk=1 {}".format(join("test", "out", dataset + "_compressed", filelist[0])).split(" ")
             p = sp.run(command, capture_output=True)
-            bitrate = round(int(p.stdout.decode()) / 1000)
+            bitrate = int(p.stdout.decode())
             #pass 1
             if method == '264':
-                encoder = '-c:v libx264 -b:v {}k -pass 1'.format(bitrate)
+                encoder = '-c:v libx264 -b:v {} -pass 1'.format(bitrate)
             elif method == '265':
-                encoder = '-c:v libx265 -b:v {}k -x265-params pass=1'.format(quality)
-            command = 'ffmpeg -hide_banner -loglevel error -i {0} -start_number 1 {2} -f null /dev/null'.format(
+                encoder = '-c:v libx265 -b:v {} -x265-params pass=1'.format(bitrate)
+            command = 'ffmpeg -hide_banner -loglevel error -i {0} -start_number 1 {1} -f null /dev/null'.format(
                 vid_path, 
                 encoder
                 )
@@ -335,10 +335,10 @@ def avc_and_hevc_match(path: str, quality, method):
                 print(p.stdout.decode(), p.stderr.decode())
             #pass 2
             if method == '264':
-                encoder = '-c:v libx264 -b:v {}k -pass 2'.format(bitrate)
+                encoder = '-c:v libx264 -b:v {} -pass 2'.format(bitrate)
             elif method == '265':
-                encoder = '-c:v libx265 -b:v {}k -x265-params pass=2'.format(quality)
-            command = 'ffmpeg -hide_banner -loglevel error -i {0} -start_number 1 {2} {3}'.format(
+                encoder = '-c:v libx265 -b:v {} -x265-params pass=2'.format(bitrate)
+            command = 'ffmpeg -hide_banner -loglevel error -i {0} -start_number 1 {1} {2}'.format(
                 vid_path, 
                 encoder,
                 join("test", method, dataset, "{}_q{:02d}.mp4".format(filename, quality))
@@ -367,7 +367,6 @@ def avc_and_hevc_match(path: str, quality, method):
                     ))
     else:
         pass
-
 
 
 
