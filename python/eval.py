@@ -21,10 +21,10 @@ def process(path: str, target_ratio, quality, out_filename):
         p = sp.run(command, capture_output=True)
         width, height = p.stdout.decode().split("\n")[:2]
         target_size = (int(int(height) * target_ratio[0]), int(int(width) * target_ratio[1]))
-        if isfile("./test/out/UCF/{}_{}x{}_q{:02d}.mp4".format(filename, target_size[1], target_size[0], quality)):
-            score = ewpsnr("./test/out/UCF/{}_{}x{}_q{:02d}.mp4".format(filename, target_size[1], target_size[0], quality), 
+        if isfile("./test/out/UCF_reverse/{}_{}x{}_q{:02d}.mp4".format(filename, target_size[1], target_size[0], quality)):
+            score = ewpsnr("./test/out/UCF_reverse/{}_{}x{}_q{:02d}.mp4".format(filename, target_size[1], target_size[0], quality), 
                 img_path, map_path)
-            command = "ffprobe -v error -select_streams v:0 -show_entries stream=bit_rate,r_frame_rate -of default=nw=1:nk=1 {}".format("./test/out/UCF_compressed/{}_{}x{}_q{:02d}.mp4".format(filename, target_size[1], target_size[0], quality)).split(" ")
+            command = "ffprobe -v error -select_streams v:0 -show_entries stream=bit_rate,r_frame_rate -of default=nw=1:nk=1 {}".format("./test/out/UCF_compressed_from_raw/{}_{}x{}_q{:02d}.mp4".format(filename, target_size[1], target_size[0], quality)).split(" ")
             p = sp.run(command, capture_output=True)
             framerate, bitrate = p.stdout.decode().split('\n')[:2]
             bitrate = int(bitrate)
@@ -52,10 +52,10 @@ def process(path: str, target_ratio, quality, out_filename):
         p = sp.run(command, capture_output=True)
         width, height = p.stdout.decode().split("\n")[:2]
         target_size = (int(int(height) * target_ratio[0]), int(int(width) * target_ratio[1]))
-        if isfile("./test/out/{}/{}_{}x{}_q{:02d}.mp4".format(dataset, filename, target_size[1], target_size[0], quality)):
-            score = ewpsnr("./test/out/{}/{}_{}x{}_q{:02d}.mp4".format(dataset, filename, target_size[1], target_size[0], quality), 
+        if isfile("./test/out/{}_reverse/{}_{}x{}_q{:02d}.mp4".format(dataset, filename, target_size[1], target_size[0], quality)):
+            score = ewpsnr("./test/out/{}_reverse/{}_{}x{}_q{:02d}.mp4".format(dataset, filename, target_size[1], target_size[0], quality), 
                 vid_path, map_path, 'jpg')
-            command = "ffprobe -v error -select_streams v:0 -show_entries stream=bit_rate,r_frame_rate -of default=nw=1:nk=1 {}".format("./test/out/{}_compressed/{}_{}x{}_q{:02d}.mp4".format(dataset, filename, target_size[1], target_size[0], quality)).split(" ")
+            command = "ffprobe -v error -select_streams v:0 -show_entries stream=bit_rate,r_frame_rate -of default=nw=1:nk=1 {}".format("./test/out/{}_compressed_from_raw/{}_{}x{}_q{:02d}.mp4".format(dataset, filename, target_size[1], target_size[0], quality)).split(" ")
             p = sp.run(command, capture_output=True)
             framerate, bitrate = p.stdout.decode().split('\n')[:2]
             bitrate = int(bitrate)
@@ -234,6 +234,7 @@ def avc_and_hevc_match(path: str, quality, method):
         command = "ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of default=nw=1:nk=1 {}".format(join(img_path, t[0])).split(" ")
         p = sp.run(command, capture_output=True)
         width, height = p.stdout.decode().split("\n")[:2]
+        # compress the warped version
         filelist = [i for i in listdir(join("test", "out", "UCF_compressed_raw")) if i.startswith(filename) and i.endswith(".mkv")]
         command = "ffmpeg -y -hide_banner -loglevel error -i {0} -c:v libx264 -preset slow -crf {1} -pix_fmt yuv420p {2}".format(
             join("test", "out", "UCF_compressed_raw", filelist[0]),
@@ -242,6 +243,15 @@ def avc_and_hevc_match(path: str, quality, method):
         )
         p = sp.run(command.split(' '), capture_output=True)
         print(p.stdout.decode(), p.stderr.decode())
+        # compress the reverse warped version
+        command = "ffmpeg -y -hide_banner -loglevel error -i {0} -c:v libx264 -preset slow -crf {1} -pix_fmt yuv420p {2}".format(
+            join("test", "out", "UCF_raw", filelist[0]),
+            quality,
+            join("test", "out", "UCF_reverse", filelist[0][:-4] + "_q{:02d}.mp4".format(quality))
+        )
+        p = sp.run(command.split(' '), capture_output=True)
+        print(p.stdout.decode(), p.stderr.decode())
+
         filelist = [i for i in listdir(join("test", "out", "UCF_compressed_from_raw")) if i.startswith(filename) and i.endswith("q{:02d}.mp4".format(quality))]
         if len(filelist) == 1:
             command = "ffprobe -v error -select_streams v:0 -show_entries stream=bit_rate -of default=nw=1:nk=1 {}".format(join("test", "out", "UCF_compressed_from_raw", filelist[0])).split(" ")
@@ -307,10 +317,19 @@ def avc_and_hevc_match(path: str, quality, method):
         p = sp.run(command, capture_output=True)
         width, height = p.stdout.decode().split("\n")[:2]
         filelist = [i for i in listdir(join("test", "out", dataset +"_compressed_raw")) if i.startswith(filename) and i.endswith(".mkv")]
+        # compress the warped version
         command = "ffmpeg -hide_banner -loglevel error -i {0} -c:v libx264 -preset slow -crf {1} -pix_fmt yuv420p {2}".format(
             join("test", "out", dataset + "_compressed_raw", filelist[0]),
             quality,
             join("test", "out", dataset + "_compressed_from_raw", filelist[0][:-4] + "_q{:02d}.mp4".format(quality))
+        )
+        p = sp.run(command, capture_output=True)
+        print(p.stdout.decode(), p.stderr.decode())
+        # compress the reverse warped version
+        command = "ffmpeg -hide_banner -loglevel error -i {0} -c:v libx264 -preset slow -crf {1} -pix_fmt yuv420p {2}".format(
+            join("test", "out", dataset + "_raw", filelist[0]),
+            quality,
+            join("test", "out", dataset + "_reverse", filelist[0][:-4] + "_q{:02d}.mp4".format(quality))
         )
         p = sp.run(command, capture_output=True)
         print(p.stdout.decode(), p.stderr.decode())
