@@ -169,19 +169,38 @@ def decompress(path: str, target_ratio, quad_size: int, sal_interval: int, quali
         p = sp.run(command, capture_output=True)
         print(p.stdout.decode(), p.stderr.decode())
 
+def UCF_original(path: str):
+    if 'UCF' in path:
+        filename = path.split('/')[-1]
+        print("working on {}".format(filename))
+        img_path = join(path, 'images')
+        map_path = join(path, 'maps')
+        t = listdir(img_path)
+        t = sorted([i for i in t if i.endswith('.png')])
+        command = 'ffmpeg -y -hide_banner -loglevel error -r 10/1 -i {0} -start_number 1 {1} {2}'.format(
+            join(img_path, t[0][:-7] + "%03d.png"), 
+            "-c:v libx264 -preset veryslow -qp 0",
+            join("test", "out", "UCF_original", "{}.mp4".format(filename))
+        )
+        if not isdir(join("test", "out", "UCF_original")):
+            os.mkdir(join("test", "out", "UCF_original"))
+        p = sp.run(command.split(' '), capture_output=True)
+        print(p.stdout.decode(), p.stderr.decode())
+
+
 if __name__ == "__main__":
-    # filelist = listdir("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/")
+    # filelist = sorted(listdir("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/"))
     # filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/", i) for i in filelist]
     # nfilelist = filelist
 
     filelist = sorted(listdir("/home/shupeizhang/Codes/Datasets/saliency/DIEM/videos"))
     filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/DIEM/videos", i) for i in filelist]
-    nfilelist = [filelist[i + 0] for i in [12, 14, 21, 26]] # not finished
+    nfilelist = [filelist[i + 20] for i in [0, 4, 12, 14, 21, 26]] # not finished
     # total 84
-    # 0, 1, 2, 3, 4
+    # 0, 1, 2, 3, 4 sal_interval 5
     # 0, 4, 12, 14, 21, 26
-    # +0
+    # 12, 14, 21, 26 sal_interval 2
     
-    filelist = [(i, (0.7, 0.7), 12, 2) for i in nfilelist]
+    filelist = [(i, (0.7, 0.7), 12, 5) for i in nfilelist]
     with Pool(processes=2) as pool:
         pool.starmap(process, filelist)

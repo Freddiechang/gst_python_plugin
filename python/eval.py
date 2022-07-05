@@ -390,7 +390,7 @@ def avc_and_hevc_match(path: str, quality, method):
 
 
 if __name__ == "__main__":
-    filelist = listdir("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/")
+    filelist = sorted(listdir("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/"))
     filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/", i) for i in filelist]
     nfilelist = filelist
 
@@ -406,7 +406,7 @@ if __name__ == "__main__":
 
 
 
-    # filelist = listdir("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/")
+    # filelist = sorted(listdir("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/"))
     # filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/", i) for i in filelist]
     # nfilelist = filelist
 
