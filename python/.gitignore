@@ -7,3 +7,4 @@ py_audiotestsrc.py
 sinkelement.py
 .ipynb_checkpoints
 test
+*.txt
