@@ -1,4 +1,3 @@
-from cgi import test
 from os.path import join, getsize, isfile, isdir
 from os import listdir
 import os
@@ -60,7 +59,7 @@ def process(path: str, quality, scale):
     while replay:
         input("Press enter to proceed.")
         p = sp.run(command, shell=True)
-        response = input("0: left is better, 1: right is better, 2: replay")
+        response = input("0: upper one is better, 1: lower one is better, 2: replay")
         while response not in ['0', '1', '2']:
             print("Invalid input. Please try again.")
             response = input("0: left is better, 1: right is better, 2: replay")
@@ -70,17 +69,23 @@ def process(path: str, quality, scale):
         elif response == '1':
             replay = False
             return 0 if not reverse else 1
+        elif response == '3':
+            replay = False
+            return 2
         else:
             continue
 
 if __name__ == "__main__":
     filelist = sorted(listdir("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/"))
-    filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/", i) for i in filelist]
+    with open("subjective_list.txt", 'r') as file:
+        filter_list = file.readlines()
+        filter_list = [i.strip('\n') for i in filter_list]
+    filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/", i) for i in filelist if i in filter_list]
     nfilelist = filelist
 
     result = []
     test_id = input("Test id: ")
-    filelist = [(i, j, 2) for i in nfilelist for j in [10, 18, 26, 32, 38, 44, 50]]
+    filelist = [(i, j, 2) for i in nfilelist for j in [38, 44, 50]]
     with open("response.txt", 'a') as file:
         file.write("ID\tFilename\tQuality\tResult\n")
         for i in filelist:
