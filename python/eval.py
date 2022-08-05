@@ -20,11 +20,13 @@ def process(path: str, target_ratio, quality, out_filename):
         command = "ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of default=nw=1:nk=1 {}".format(join(img_path, t[0])).split(" ")
         p = sp.run(command, capture_output=True)
         width, height = p.stdout.decode().split("\n")[:2]
-        target_size = (int(int(height) * target_ratio[0]), int(int(width) * target_ratio[1]))
-        if isfile("./test/out/UCF_reverse/{}_{}x{}_q{:02d}.mp4".format(filename, target_size[1], target_size[0], quality)):
-            score = ewpsnr("./test/out/UCF_reverse/{}_{}x{}_q{:02d}.mp4".format(filename, target_size[1], target_size[0], quality), 
+        filelist = [i for i in listdir(join("test", "out", "UCF_reverse")) if i.startswith(filename) and i.endswith("q{:02d}.mp4".format(quality))]
+        if len(filelist) != 1:
+            return 1
+        if isfile("./test/out/UCF_reverse/{}".format(filelist[0])):
+            score = ewpsnr("./test/out/UCF_reverse/{}".format(filelist[0]), 
                 img_path, map_path)
-            command = "ffprobe -v error -select_streams v:0 -show_entries stream=bit_rate,r_frame_rate -of default=nw=1:nk=1 {}".format("./test/out/UCF_compressed_from_raw/{}_{}x{}_q{:02d}.mp4".format(filename, target_size[1], target_size[0], quality)).split(" ")
+            command = "ffprobe -v error -select_streams v:0 -show_entries stream=bit_rate,r_frame_rate -of default=nw=1:nk=1 {}".format("./test/out/UCF_compressed_from_raw/{}".format(filelist[0])).split(" ")
             p = sp.run(command, capture_output=True)
             framerate, bitrate = p.stdout.decode().split('\n')[:2]
             bitrate = int(bitrate)
@@ -33,6 +35,12 @@ def process(path: str, target_ratio, quality, out_filename):
             bpp = bitrate / framerate / int(width) / int(height)
             with open(out_filename, 'a') as f:
                 f.write("{}\t{}\t{}\t{}\n".format(
+                    filename,
+                    quality,
+                    bpp,
+                    score[1][0]
+                ))
+            print("{}\t{}\t{}\t{}\n".format(
                     filename,
                     quality,
                     bpp,
@@ -51,11 +59,13 @@ def process(path: str, target_ratio, quality, out_filename):
         command = "ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of default=nw=1:nk=1 {}".format(vid_path).split(" ")
         p = sp.run(command, capture_output=True)
         width, height = p.stdout.decode().split("\n")[:2]
-        target_size = (int(int(height) * target_ratio[0]), int(int(width) * target_ratio[1]))
-        if isfile("./test/out/{}_reverse/{}_{}x{}_q{:02d}.mp4".format(dataset, filename, target_size[1], target_size[0], quality)):
-            score = ewpsnr("./test/out/{}_reverse/{}_{}x{}_q{:02d}.mp4".format(dataset, filename, target_size[1], target_size[0], quality), 
+        filelist = [i for i in listdir(join("test", "out", dataset +"_compressed")) if i.startswith(filename) and i.endswith("q{:02d}.mp4".format(quality))]
+        if len(filelist) != 1:
+            return 1
+        if isfile("./test/out/{}_reverse/{}".format(dataset, filelist[0])):
+            score = ewpsnr("./test/out/{}_reverse/{}".format(dataset, filelist[0]), 
                 vid_path, map_path, 'jpg')
-            command = "ffprobe -v error -select_streams v:0 -show_entries stream=bit_rate,r_frame_rate -of default=nw=1:nk=1 {}".format("./test/out/{}_compressed_from_raw/{}_{}x{}_q{:02d}.mp4".format(dataset, filename, target_size[1], target_size[0], quality)).split(" ")
+            command = "ffprobe -v error -select_streams v:0 -show_entries stream=bit_rate,r_frame_rate -of default=nw=1:nk=1 {}".format("./test/out/{}_compressed_from_raw/{}".format(dataset, filelist[0])).split(" ")
             p = sp.run(command, capture_output=True)
             framerate, bitrate = p.stdout.decode().split('\n')[:2]
             bitrate = int(bitrate)
@@ -400,7 +410,7 @@ if __name__ == "__main__":
     # 0, 4, 12, 14, 21, 26
     # +0 +20 +40 +11 +31 +41
     #nfilelist = [filelist[i + 51] for i in [0, 4, 12, 14, 21, 26]]
-    filelist = [(i, (0.7, 0.7), j, 'ucf.txt') for i in nfilelist for j in [10, 22, 34, 46, 50]]
+    filelist = [(i, (0.7, 0.7), j, 'proposed.txt') for i in nfilelist for j in [10, 18, 26, 32, 38, 44, 50]]
     with Pool(processes=1) as pool:
         pool.starmap(process, filelist)
 

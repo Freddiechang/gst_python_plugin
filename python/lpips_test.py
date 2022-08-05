@@ -70,10 +70,11 @@ if __name__ == "__main__":
     filelist = sorted(listdir("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/"))
     filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/", i) for i in filelist]
     nfilelist = filelist
-    loss_fn = lpips.LPIPS(net='alex').cuda()
-    filelist = [(i, j, loss_fn) for i in nfilelist for j in [10, 18, 26, 32, 38, 44, 50]]
-    with open("lpips.txt", 'a') as file:
-        file.write("Filename\tQuality\tProposed\th264\n")
-        for i in filelist:
-            r = process(*i)
-            file.write("{}\t{}\t{}\t{}\n".format(i[0].split('/')[-1], i[1], r[0], r[1]))
+    with torch.no_grad():
+        loss_fn = lpips.LPIPS(net='alex').cuda()
+        filelist = [(i, j, loss_fn) for i in nfilelist for j in [10, 18, 26, 32, 38, 44, 50]]
+        with open("lpips.txt", 'a') as file:
+            file.write("Filename\tQuality\tProposed\th264\n")
+            for i in filelist:
+                r = process(*i)
+                file.write("{}\t{}\t{}\t{}\n".format(i[0].split('/')[-1], i[1], r[0], r[1]))
