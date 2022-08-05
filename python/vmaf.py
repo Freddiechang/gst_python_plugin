@@ -1,12 +1,10 @@
-import lpips
-import numpy as np
-import torch
-import cv2
+import subprocess as sp
+import re
 
 from os.path import join, getsize, isfile, isdir
 from os import listdir
 
-def process(path: str, quality, loss_fn):
+def process(path: str, quality):
     videos = []
     if 'UCF' in path:
         filename = path.split('/')[-1]
@@ -41,40 +39,31 @@ def process(path: str, quality, loss_fn):
             print("File {}/{} is not complete.\n {}\n".format(dataset, filename, videos))
             return -1
 
-    videos = [cv2.VideoCapture(i) for i in videos]
-    status = [i.isOpened() == False for i in videos]
-    # proposed, h264
-    total = torch.zeros(2).cuda()
-    if any(status):
-        for i in range(3):
-            if status[i]:
-                print("File {} cannot be opened.\n {}\n".format(filename, videos))
-        return -1
-    count = 0
-    while videos[0].isOpened():
-        frames = [i.read() for i in videos]
-        if frames[0][0] == True:
-            count += 1
-            images = [np.expand_dims(np.transpose(i[1], (2, 0, 1)), axis=0) for i in frames]
-            images = np.array(images) / 255. * 2 - 1
-            images = torch.Tensor(images).cuda()
-            test_images = torch.cat([images[0], images[2]])
-            ref_images = torch.cat([images[1], images[1]])
-            total += loss_fn.forward(ref_images, test_images).squeeze()
-        else:
-            break
-    return (total / count).detach().cpu().numpy()
+    scores = []
+    command = '/home/shupeizhang/Codes/ffmpeg-5.0.1/ffmpeg -i {} -i {} -lavfi "[0][1]libvmaf=model_path=/home/shupeizhang/Codes/ffmpeg-5.0.1/model/vmaf_v0.6.1.json" -hide_banner -loglevel info  -f null -'.format(
+        videos[0],
+        videos[1]
+    )
+    r = sp.run(command, shell=True, capture_output=True)
+    scores.append(float(re.findall("\d+\.\d+", r.stderr.decode().split('\n')[-2])[0]))
+
+    command = '/home/shupeizhang/Codes/ffmpeg-5.0.1/ffmpeg -i {} -i {} -lavfi "[0][1]libvmaf=model_path=/home/shupeizhang/Codes/ffmpeg-5.0.1/model/vmaf_v0.6.1.json" -hide_banner -loglevel info  -f null -'.format(
+        videos[2],
+        videos[1]
+    )
+    r = sp.run(command, shell=True, capture_output=True)
+    scores.append(float(re.findall("\d+\.\d+", r.stderr.decode().split('\n')[-2])[0]))
+
+    return scores
 
 
 if __name__ == "__main__":
     filelist = sorted(listdir("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/"))
     filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/", i) for i in filelist]
     nfilelist = filelist
-    with torch.no_grad():
-        loss_fn = lpips.LPIPS(net='alex').cuda()
-        filelist = [(i, j, loss_fn) for i in nfilelist for j in [10, 18, 26, 32, 38, 44, 50]]
-        with open("lpips.txt", 'w') as file:
-            file.write("Filename\tQuality\tProposed\th264\n")
-            for i in filelist:
-                r = process(*i)
-                file.write("{}\t{}\t{}\t{}\n".format(i[0].split('/')[-1], i[1], r[0], r[1]))
+    filelist = [(i, j) for i in nfilelist for j in [10, 18, 26, 32, 38, 44, 50]]
+    with open("vmaf.txt", 'w') as file:
+        file.write("Filename\tQuality\tProposed\th264\n")
+        for i in filelist:
+            r = process(*i)
+            file.write("{}\t{}\t{}\t{}\n".format(i[0].split('/')[-1], i[1], r[0], r[1]))
