@@ -189,18 +189,18 @@ def UCF_original(path: str):
 
 
 if __name__ == "__main__":
-    filelist = sorted(listdir("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/"))
-    filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/", i) for i in filelist]
-    nfilelist = filelist
+    # filelist = sorted(listdir("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/"))
+    # filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/", i) for i in filelist]
+    # nfilelist = filelist
 
-    # filelist = sorted(listdir("/home/shupeizhang/Codes/Datasets/saliency/DIEM/videos"))
-    # filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/DIEM/videos", i) for i in filelist]
-    # nfilelist = [filelist[i + 23] for i in [0, 4, 12, 14, 21, 26]] # not finished
-    # # total 84
-    # # 0, 1, 2, 3, 4 sal_interval 5 +20 + 40 +31 +11 +43 
-    # # 0, 4, 12, 14, 21, 26
-    # # 12, 14, 21, 26 sal_interval 2
+    filelist = sorted(listdir("/home/shupeizhang/Codes/Datasets/saliency/DIEM/videos"))
+    filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/DIEM/videos", i) for i in filelist]
+    nfilelist = [filelist[i + 23] for i in [0, 4, 12, 14, 21, 26]] # not finished
+    # total 84
+    # 0, 1, 2, 3, 4 sal_interval 5 +20 + 40 +31 +11 +43 +23 
+    # 0, 4, 12, 14, 21, 26
+    # 12, 14, 21, 26 sal_interval 2
     
-    filelist = [(i, (0.7, 0.7), 4, 5) for i in nfilelist[1:]]
+    filelist = [(i, (0.7, 0.7), 12, 5) for i in nfilelist]
     with Pool(processes=2) as pool:
         pool.starmap(process, filelist)
