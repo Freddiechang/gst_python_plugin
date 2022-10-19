@@ -4,13 +4,40 @@ Reference: https://github.com/PhoebeWangintw/Feature-aware-texturing
 from skimage import measure
 from scipy.sparse import csc_matrix
 from scipy.optimize import curve_fit
-from scipy.sparse.linalg import lsqr
+from scipy.sparse.linalg import lsqr, lsmr
+from multiprocessing import Pool
+import time
+
+# from cupyx.scipy.sparse.linalg import lsmr
+# from cupyx.scipy.sparse import csc_matrix as csc_matrix_cu
+# import cupy as cp
 
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 import math
-
+    
+def quad_to_coor_single(src, dst):
+    new_src, new_dst = (src - src.min(axis=0)).astype(np.float32), (dst - dst.min(axis=0)).astype(np.float32)
+            
+    dst_min = dst.min(axis=0).astype(np.int32)
+    dst_max = dst.max(axis=0).astype(np.int32)
+    dsize = dst_max - dst_min + 1
+    dsize = (dsize[0], dsize[1])
+    mask = np.zeros(dsize, dtype=np.uint8)
+    cv2.fillConvexPoly(mask, np.array([new_dst[:,::-1]]).astype(np.int32), True)
+    coors = np.where(mask == True)
+    coors = np.stack(coors, axis=0)
+    coors_in_warped = coors + dst_min.reshape(2, 1)
+    
+    M = cv2.getPerspectiveTransform(new_src[:,::-1], new_dst[:,::-1], cv2.DECOMP_SVD)
+    M_inv = np.linalg.inv(M)
+    coors = np.stack([coors[1,:], coors[0,:], np.ones((coors.shape[1]))], axis=0)
+    coors = M_inv @ coors
+    coors /= coors[2, :].reshape(1, -1)
+    coors = np.stack([coors[1,:], coors[0,:]], axis=0)
+    coors += src.min(axis=0).reshape(2,1)
+    return coors_in_warped, coors
 
 class Mesh():
     def __init__(self, saliency_map, mask, target_size, quad_size, W):
@@ -425,6 +452,43 @@ class Mesh():
         return mapping
 
 
+
+
+    def quad_to_coor_pool(self, reverse=False):
+        """
+        generate a coordinate mapping from the given mesh and vertex coordinates
+        self: mesh
+        V: vertex coordinates
+        target_size: target size
+        reverse: whether to reverse the coordinate mapping
+        mapping: ndarray of shape (*target_size, 2), value (x, y) at location mapping(i, j) means
+        target_image[i, j] = original_image[x, y]
+        """
+        if not reverse:
+            mapping = np.ones((*self.target_size, 2)) * -1
+            all_src = [np.array(self.origin_vertices[quad]).astype(np.float32) for quad in self.Q]
+            all_dst = [np.array(self.V[quad]).astype(np.float32) for quad in self.Q]
+        else:
+            mapping = np.ones((*self.saliency_map.shape, 2)) * -1
+            all_dst = [np.array(self.origin_vertices[quad]).astype(np.float32) for quad in self.Q]
+            all_src = [np.array(self.V[quad]).astype(np.float32) for quad in self.Q]
+
+        with Pool(8) as pool:
+            result = pool.starmap(quad_to_coor_single, zip(all_src, all_dst))
+        coors_in_warped = [i[0] for i in result]
+        coors = [i[1] for i in result]
+        coors_in_warped = np.concatenate(coors_in_warped, axis=1)
+        coors = np.concatenate(coors, axis=1)
+        if not reverse:
+                coors_in_warped[0, :] = np.clip(coors_in_warped[0, :], 0, self.target_size[0] - 1)
+                coors_in_warped[1, :] = np.clip(coors_in_warped[1, :], 0, self.target_size[1] - 1)
+        else:
+            coors_in_warped[0, :] = np.clip(coors_in_warped[0, :], 0, self.height - 1)
+            coors_in_warped[1, :] = np.clip(coors_in_warped[1, :], 0, self.width - 1)
+        mapping[(coors_in_warped[0,:], coors_in_warped[1,:])] = coors.T
+        return mapping
+
+
     def plot_mesh(self):
         """
         plot the mesh
@@ -445,25 +509,67 @@ class Mesh():
     
     def solve_and_update(self):
         ret = self.warped_vertices.copy()
-        x = lsqr(self.L, self.b[:, 0])[0]
-        y = lsqr(self.L, self.b[:, 1])[0]
+        x0 = ret[self.non_constraints_idx, 0]
+        y0 = ret[self.non_constraints_idx, 1]
+        x = lsqr(self.L, self.b[:, 0], x0=x0)[0]
+        y = lsqr(self.L, self.b[:, 1], x0=y0)[0]
+        ret[self.non_constraints_idx, 0] = x
+        ret[self.non_constraints_idx, 1] = y
         
-        for i, idx in enumerate(self.non_constraints_idx):
-            ret[idx, :] = x[i], y[i]
+        #for i, idx in enumerate(self.non_constraints_idx):
+        #    ret[idx, :] = x[i], y[i]
+        
+        self.V = ret
+    
+
+    def solve_and_update_cupy(self):
+        ret = self.warped_vertices.copy()
+        x0 = ret[self.non_constraints_idx, 0]
+        y0 = ret[self.non_constraints_idx, 1]
+        
+        # with cp.cuda.Device(0):
+        #     L = csc_matrix_cu(self.L)
+        #     b = cp.array(self.b)
+        #     xc = lsmr(L, b[:, 0])[0]
+        #     yc= lsmr(L, b[:, 1])[0]
+        x = lsqr(self.L, self.b[:, 0], x0=x0)[0]
+        y = lsqr(self.L, self.b[:, 1], x0=y0)[0]
+        ret[self.non_constraints_idx, 0] = x
+        ret[self.non_constraints_idx, 1] = y
+        
+        #for i, idx in enumerate(self.non_constraints_idx):
+        #    ret[idx, :] = x[i], y[i]
         
         self.V = ret
 
     def generate_mapping(self, w_f, original_size, compressed_size, scale=None):
+        a = time.time()
         self.init_r(np.sum(self.Q_label != 0))
+        print("init_r: {}", time.time() - a)
+        a = time.time()
         self.compute_L2(w_f, self.saliency_map)
+        print("compute_L2: {}", time.time() - a)
+        a = time.time()
         self.V = self.warped_vertices.copy()
         self.compute_b2(w_f, self.saliency_map, scale)
-        self.solve_and_update()
+        print("compute_b2: {}", time.time() - a)
+        a = time.time()
+        self.solve_and_update_cupy()
+        print("solve: {}", time.time() - a)
+        a = time.time()
         self.update_r2()
+        print("update_r2: {}", time.time() - a)
+        a = time.time()
         s = np.array([compressed_size]) / np.array([original_size])
         self.V += (np.array([compressed_size]) - 1) / 2
-        self.coor_mapping = self.quad_to_coor()
-        self.reverse_mapping = self.quad_to_coor(reverse=True)
+        print("null: {}", time.time() - a)
+        a = time.time()
+        self.coor_mapping = self.quad_to_coor_pool()
+        print("q2c: {}", time.time() - a)
+        a = time.time()
+        self.reverse_mapping = self.quad_to_coor_pool(reverse=True)
+        print("rq2c: {}", time.time() - a)
+        a = time.time()
     
     def coor_warping(self, img):
         """
@@ -579,7 +685,25 @@ def rescale3(coor, height_multiplier, width_multiplier, img_size):
         coor[:, 1] = coor[:, 1] * width_multiplier
     return coor
 
+def rescale2(coor, height_multiplier, width_multiplier, img_size):
+    """
+    offset to use during reconstruction: ((h, w) - 1) / 2 * (1 - (sh, sw))
+    (h - 1) / 2 * (1 - s)
+    the shifted coors are all positive -> can use tsnnls to solve least square
+    """
+    coor = coor.copy()
+    if coor.shape == (2,):
+        coor[0] = coor[0] * height_multiplier + (img_size[0] - 1) / 2 * (1 - height_multiplier)
+        coor[1] = coor[1] * width_multiplier + (img_size[1] - 1) / 2 * (1 - width_multiplier)
+    else:
+        coor[:, 0] = (coor[:, 0] - (img_size[0] - 1) / 2) * height_multiplier
+        coor[:, 1] = (coor[:, 1] - (img_size[1] - 1) / 2) * width_multiplier
+    return coor
+
 def rescale(coor, height_multiplier, width_multiplier, img_size):
+    """
+    offset to use during reconstruction: (h, w) * (sh, sw) / 2
+    """
     coor = coor.copy()
     if coor.shape == (2,):
         coor[0] = (coor[0] - (img_size[0] - 1) / 2) * height_multiplier

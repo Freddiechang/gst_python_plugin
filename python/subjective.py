@@ -16,13 +16,13 @@ def process(path: str, quality, scale):
     if 'UCF' in path:
         filename = path.split('/')[-1]
         print("working on {}".format(filename))
-        filelist = [i for i in listdir(join("test", "out", "UCF_reverse")) if i.startswith(filename) and i.endswith("q{:02d}.mp4".format(quality))]
+        filelist = [i for i in listdir(join("test", "out", "UCF_reverse_265")) if i.startswith(filename) and i.endswith("q{:02d}.mp4".format(quality))]
         if len(filelist) == 1:
-            videos.append("./test/out/UCF_reverse/{}".format(filelist[0]))
+            videos.append("./test/out/UCF_reverse_265/{}".format(filelist[0]))
         if isfile("./test/out/UCF_original/{}.mp4".format(filename)):
             videos.append("./test/out/UCF_original/{}.mp4".format(filename))
-        if isfile("./test/264/UCF/{}_q{:02d}.mp4".format(filename, quality)):
-            videos.append("./test/264/UCF/{}_q{:02d}.mp4".format(filename, quality))
+        if isfile("./test/265/UCF/{}_q{:02d}.mp4".format(filename, quality)):
+            videos.append("./test/265/UCF/{}_q{:02d}.mp4".format(filename, quality))
         if len(videos) != 3:
             print("File {} is not complete.\n {}\n".format(filename, videos))
             return -1

@@ -6,18 +6,18 @@ import cv2
 from os.path import join, getsize, isfile, isdir
 from os import listdir
 
-def process(path: str, quality, loss_fn):
+def process(path: str, quality, loss_fn, method):
     videos = []
     if 'UCF' in path:
         filename = path.split('/')[-1]
         print("working on {}".format(filename))
-        filelist = [i for i in listdir(join("test", "out", "UCF_reverse")) if i.startswith(filename) and i.endswith("q{:02d}.mp4".format(quality))]
+        filelist = [i for i in listdir(join("test", "out", "UCF_reverse_{}".format(method))) if i.startswith(filename) and i.endswith("q{:02d}.mp4".format(quality))]
         if len(filelist) == 1:
-            videos.append("./test/out/UCF_reverse/{}".format(filelist[0]))
+            videos.append("./test/out/UCF_reverse_{}/{}".format(method, filelist[0]))
         if isfile("./test/out/UCF_original/{}.mp4".format(filename)):
             videos.append("./test/out/UCF_original/{}.mp4".format(filename))
-        if isfile("./test/264/UCF/{}_q{:02d}.mp4".format(filename, quality)):
-            videos.append("./test/264/UCF/{}_q{:02d}.mp4".format(filename, quality))
+        if isfile("./test/{}/UCF/{}_q{:02d}.mp4".format(method, filename, quality)):
+            videos.append("./test/{}/UCF/{}_q{:02d}.mp4".format(method, filename, quality))
         if len(videos) != 3:
             print("File {} is not complete.\n {}\n".format(filename, videos))
             return -1
@@ -30,15 +30,15 @@ def process(path: str, quality, loss_fn):
         for i in ['ETMD', 'SumMe', 'DIEM']:
             if i in path:
                 dataset = i
-        filelist = [i for i in listdir(join("test", "out", dataset +"_reverse")) if i.startswith(filename) and i.endswith("q{:02d}.mp4".format(quality))]
+        filelist = [i for i in listdir(join("test", "out", dataset + "_reverse_" + method)) if i.startswith(filename) and i.endswith("q{:02d}.mp4".format(quality))]
         if len(filelist) == 1:
-            videos.append("./test/out/{}_reverse/{}".format(dataset, filelist[0]))
+            videos.append("./test/out/{}_reverse_{}/{}".format(dataset, method, filelist[0]))
         if isfile(vid_path):
             videos.append(vid_path)
-        if isfile("./test/264/{}/{}_q{:02d}.mp4".format(dataset, filename, quality)):
-            videos.append("./test/264/{}/{}_q{:02d}.mp4".format(dataset, filename, quality))
+        if isfile("./test/{}/{}/{}_q{:02d}.mp4".format(method, dataset, filename, quality)):
+            videos.append("./test/{}/{}/{}_q{:02d}.mp4".format(method, dataset, filename, quality))
         if len(videos) != 3:
-            print("File {}/{} is not complete.\n {}\n".format(dataset, filename, videos))
+            print("File {}/{}/{} is not complete.\n {}\n".format(method, dataset, filename, videos))
             return -1
 
     videos = [cv2.VideoCapture(i) for i in videos]
@@ -70,11 +70,12 @@ if __name__ == "__main__":
     filelist = sorted(listdir("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/"))
     filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/", i) for i in filelist]
     nfilelist = filelist
+    method = '265'
     with torch.no_grad():
         loss_fn = lpips.LPIPS(net='alex').cuda()
-        filelist = [(i, j, loss_fn) for i in nfilelist for j in [10, 18, 26, 32, 38, 44, 50]]
-        with open("lpips.txt", 'w') as file:
-            file.write("Filename\tQuality\tProposed\th264\n")
+        filelist = [(i, j, loss_fn, method) for i in nfilelist for j in [10, 18, 26, 32, 38, 44, 50]]
+        with open("lpips_{}.txt".format(method), 'w') as file:
+            file.write("Filename\tQuality\tProposed\t{}\n".format(method))
             for i in filelist:
                 r = process(*i)
                 file.write("{}\t{}\t{}\t{}\n".format(i[0].split('/')[-1], i[1], r[0], r[1]))

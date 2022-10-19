@@ -1,0 +1,3 @@
+tsnnls/build
+tsnnls/*.so
+tsnnls/*.c
