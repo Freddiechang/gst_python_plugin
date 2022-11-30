@@ -235,6 +235,8 @@ def avc_and_hevc2(path: str, quality, method):
 
 def avc_and_hevc_match(path: str, quality, method):
     if 'UCF' in path:
+        if not isdir(join("test", "out", "UCF_compressed_from_raw")):
+            os.mkdir(join("test", "out", "UCF_compressed_from_raw"))
         filename = path.split('/')[-1]
         print("working on {} q: {}".format(filename, quality))
         img_path = join(path, 'images')
@@ -246,18 +248,24 @@ def avc_and_hevc_match(path: str, quality, method):
         width, height = p.stdout.decode().split("\n")[:2]
         # compress the warped version
         filelist = [i for i in listdir(join("test", "out", "UCF_compressed_raw")) if i.startswith(filename) and i.endswith(".mkv")]
-        command = "ffmpeg -y -hide_banner -loglevel error -i {0} -c:v libx264 -preset slow -crf {1} -pix_fmt yuv420p {2}".format(
+        if not isdir(join("test", "out", "UCF_compressed_from_raw" + "_" + method)):
+                os.mkdir(join("test", "out", "UCF_compressed_from_raw" + "_" + method))
+        command = "ffmpeg -y -hide_banner -loglevel error -i {0} -c:v {1} -preset slow -crf {2} -pix_fmt yuv420p {3}".format(
             join("test", "out", "UCF_compressed_raw", filelist[0]),
+            "libx{}".format(method),
             quality,
-            join("test", "out", "UCF_compressed_from_raw", filelist[0][:-4] + "_q{:02d}.mp4".format(quality))
+            join("test", "out", "UCF_compressed_from_raw" + "_" + method, filelist[0][:-4] + "_q{:02d}.mp4".format(quality))
         )
         p = sp.run(command.split(' '), capture_output=True)
         print(p.stdout.decode(), p.stderr.decode())
         # compress the reverse warped version
-        command = "ffmpeg -y -hide_banner -loglevel error -i {0} -c:v libx264 -preset slow -crf {1} -pix_fmt yuv420p {2}".format(
+        if not isdir(join("test", "out", "UCF_reverse" + "_" + method)):
+            os.mkdir(join("test", "out", "UCF_reverse" + "_" + method))
+        command = "ffmpeg -y -hide_banner -loglevel error -i {0} -c:v {1} -preset slow -crf {2} -pix_fmt yuv420p {3}".format(
             join("test", "out", "UCF_raw", filelist[0]),
+            "libx{}".format(method),
             quality,
-            join("test", "out", "UCF_reverse", filelist[0][:-4] + "_q{:02d}.mp4".format(quality))
+            join("test", "out", "UCF_reverse" + "_" + method, filelist[0][:-4] + "_q{:02d}.mp4".format(quality))
         )
         p = sp.run(command.split(' '), capture_output=True)
         print(p.stdout.decode(), p.stderr.decode())
@@ -266,7 +274,7 @@ def avc_and_hevc_match(path: str, quality, method):
         if len(filelist) == 1:
             command = "ffprobe -v error -select_streams v:0 -show_entries stream=bit_rate -of default=nw=1:nk=1 {}".format(join("test", "out", "UCF_compressed_from_raw", filelist[0])).split(" ")
             p = sp.run(command, capture_output=True)
-            # kbits/sec
+            # bits/sec
             bitrate = int(p.stdout.decode())
             #pass 1
             if method == '264':
@@ -320,6 +328,8 @@ def avc_and_hevc_match(path: str, quality, method):
         for i in ['ETMD', 'SumMe', 'DIEM']:
             if i in path:
                 dataset = i
+        if not isdir(join("test", "out", dataset + "_compressed_from_raw")):
+            os.mkdir(join("test", "out", dataset + "_compressed_from_raw"))
         vid_path = path
         path = '/'.join(path.split('/')[:-2])
         map_path = join(path, 'annotation', filename, 'maps')
@@ -336,6 +346,8 @@ def avc_and_hevc_match(path: str, quality, method):
         p = sp.run(command, capture_output=True)
         print(p.stdout.decode(), p.stderr.decode())
         # compress the reverse warped version
+        if not isdir(join("test", "out", dataset + "_reverse" + "_" + method)):
+            os.mkdir(join("test", "out", dataset + "_reverse" + "_" + method))
         command = "ffmpeg -hide_banner -loglevel error -i {0} -c:v libx264 -preset slow -crf {1} -pix_fmt yuv420p {2}".format(
             join("test", "out", dataset + "_raw", filelist[0]),
             quality,

@@ -4,9 +4,16 @@ Reference: https://github.com/PhoebeWangintw/Feature-aware-texturing
 from skimage import measure
 from scipy.sparse import csc_matrix
 from scipy.optimize import curve_fit
-from scipy.sparse.linalg import lsqr, lsmr
+from scipy.interpolate import griddata
+
 from multiprocessing import Pool
 import time
+
+import sys
+sys.path.append("../tsnnls")
+#from scipy.sparse.linalg import lsqr, lsmr
+from tsnnls import lsqr, snnls
+from sksparse.cholmod import cholesky_AAt
 
 # from cupyx.scipy.sparse.linalg import lsmr
 # from cupyx.scipy.sparse import csc_matrix as csc_matrix_cu
@@ -454,7 +461,7 @@ class Mesh():
 
 
 
-    def quad_to_coor_pool(self, reverse=False):
+    def quad_to_coor_pool(self, reverse=False, pools=8):
         """
         generate a coordinate mapping from the given mesh and vertex coordinates
         self: mesh
@@ -473,15 +480,15 @@ class Mesh():
             all_dst = [np.array(self.origin_vertices[quad]).astype(np.float32) for quad in self.Q]
             all_src = [np.array(self.V[quad]).astype(np.float32) for quad in self.Q]
 
-        with Pool(8) as pool:
+        with Pool(pools) as pool:
             result = pool.starmap(quad_to_coor_single, zip(all_src, all_dst))
         coors_in_warped = [i[0] for i in result]
         coors = [i[1] for i in result]
         coors_in_warped = np.concatenate(coors_in_warped, axis=1)
         coors = np.concatenate(coors, axis=1)
         if not reverse:
-                coors_in_warped[0, :] = np.clip(coors_in_warped[0, :], 0, self.target_size[0] - 1)
-                coors_in_warped[1, :] = np.clip(coors_in_warped[1, :], 0, self.target_size[1] - 1)
+            coors_in_warped[0, :] = np.clip(coors_in_warped[0, :], 0, self.target_size[0] - 1)
+            coors_in_warped[1, :] = np.clip(coors_in_warped[1, :], 0, self.target_size[1] - 1)
         else:
             coors_in_warped[0, :] = np.clip(coors_in_warped[0, :], 0, self.height - 1)
             coors_in_warped[1, :] = np.clip(coors_in_warped[1, :], 0, self.width - 1)
@@ -509,10 +516,14 @@ class Mesh():
     
     def solve_and_update(self):
         ret = self.warped_vertices.copy()
-        x0 = ret[self.non_constraints_idx, 0]
-        y0 = ret[self.non_constraints_idx, 1]
-        x = lsqr(self.L, self.b[:, 0], x0=x0)[0]
-        y = lsqr(self.L, self.b[:, 1], x0=y0)[0]
+        ############ using suitesparse ##########
+        t = self.L.T
+        factor = cholesky_AAt(t)
+        x = factor(t * self.b[:, 0])
+        y = factor(t * self.b[:, 1])
+        ############ using tsnnls ##########
+        # x = lsqr(self.L, self.b[:, 0])[0]
+        # y = lsqr(self.L, self.b[:, 1])[0]
         ret[self.non_constraints_idx, 0] = x
         ret[self.non_constraints_idx, 1] = y
         
@@ -522,18 +533,17 @@ class Mesh():
         self.V = ret
     
 
-    def solve_and_update_cupy(self):
+    def solve_and_update_rescale2(self):
         ret = self.warped_vertices.copy()
-        x0 = ret[self.non_constraints_idx, 0]
-        y0 = ret[self.non_constraints_idx, 1]
         
         # with cp.cuda.Device(0):
         #     L = csc_matrix_cu(self.L)
         #     b = cp.array(self.b)
         #     xc = lsmr(L, b[:, 0])[0]
         #     yc= lsmr(L, b[:, 1])[0]
-        x = lsqr(self.L, self.b[:, 0], x0=x0)[0]
-        y = lsqr(self.L, self.b[:, 1], x0=y0)[0]
+        x = lsqr(self.L, self.b[:, 0])[0]
+        y = lsqr(self.L, self.b[:, 1])[0]
+        
         ret[self.non_constraints_idx, 0] = x
         ret[self.non_constraints_idx, 1] = y
         
@@ -554,20 +564,27 @@ class Mesh():
         self.compute_b2(w_f, self.saliency_map, scale)
         print("compute_b2: {}", time.time() - a)
         a = time.time()
-        self.solve_and_update_cupy()
+        self.solve_and_update()
         print("solve: {}", time.time() - a)
         a = time.time()
         self.update_r2()
         print("update_r2: {}", time.time() - a)
         a = time.time()
+        ##########################################
+        # x += (self.width - 1) / 2 * (self.width - self.target_size[1]) / self.width
+        # y += (self.height - 1) / 2 * (self.height - self.target_size[0]) / self.height
+        ##########################################
         s = np.array([compressed_size]) / np.array([original_size])
-        self.V += (np.array([compressed_size]) - 1) / 2
+        self.V -= (np.array([original_size]) - 1) /2 * (1 - s)
+        #print(self.V.min(axis=0), self.V.max(axis=0))
+        #self.V += (np.array([compressed_size]) - 1) / 2
         print("null: {}", time.time() - a)
         a = time.time()
         self.coor_mapping = self.quad_to_coor_pool()
         print("q2c: {}", time.time() - a)
         a = time.time()
         self.reverse_mapping = self.quad_to_coor_pool(reverse=True)
+        self.interpolate_missing_coors()
         print("rq2c: {}", time.time() - a)
         a = time.time()
     
@@ -609,6 +626,43 @@ class Mesh():
         out_img[mask] = warped_img[(filtered_coor[:,0], filtered_coor[:,1])]
         return out_img
     
+    def interpolate_missing_coors(self):
+        for i in (self.coor_mapping, self.reverse_mapping):
+            for j in range(2):
+                x, y = np.where(~np.isclose(i[:,:,j], -1))
+                missing_x, missing_y = np.where(np.isclose(i[:,:,j], -1))
+                z = i[:,:,j]
+                z = z[z != -1].flatten()
+                f_x = griddata(np.stack((x, y), 1), z, (missing_x, missing_y), method='nearest')
+                
+                i[missing_x, missing_y, j] = f_x
+
+    def coor_warping_remap(self, img):
+        """
+        warp an image according to the given coordinate mapping
+        foveated compression
+        img: input image
+        coor_mapping: coordinate mapping
+        target_size: target size
+        """
+        tmp_coor_warping = self.coor_mapping[:,:,::-1]
+        maps = cv2.convertMaps(tmp_coor_warping.astype(np.float32), None, cv2.CV_16SC2)
+        out_img = cv2.remap(img, *maps, interpolation=cv2.INTER_LINEAR)
+        return out_img
+
+    def reverse_warping_remap(self, warped_img):
+        """
+        reverse the warped image to recover the original image
+        reverse foveated compression
+        img: input image
+        coor_mapping: coordinate mapping
+        target_size: target size
+        """
+        tmp_coor_warping = self.reverse_mapping[:,:,::-1]
+        maps = cv2.convertMaps(tmp_coor_warping.astype(np.float32), None, cv2.CV_16SC2)
+        out_img = cv2.remap(warped_img, *maps, interpolation=cv2.INTER_LINEAR)
+        return out_img
+
 
 class Gaussian():
     def __init__(self, mask_size):
@@ -693,11 +747,11 @@ def rescale2(coor, height_multiplier, width_multiplier, img_size):
     """
     coor = coor.copy()
     if coor.shape == (2,):
-        coor[0] = coor[0] * height_multiplier + (img_size[0] - 1) / 2 * (1 - height_multiplier)
-        coor[1] = coor[1] * width_multiplier + (img_size[1] - 1) / 2 * (1 - width_multiplier)
+        coor[0] = (coor[0] - (img_size[0] - 1) / 2) * height_multiplier + (img_size[0] - 1) / 2
+        coor[1] = (coor[1] - (img_size[1] - 1) / 2) * width_multiplier + (img_size[1] - 1) / 2
     else:
-        coor[:, 0] = (coor[:, 0] - (img_size[0] - 1) / 2) * height_multiplier
-        coor[:, 1] = (coor[:, 1] - (img_size[1] - 1) / 2) * width_multiplier
+        coor[:, 0] = (coor[:, 0] - (img_size[0] - 1) / 2) * height_multiplier + (img_size[0] - 1) / 2
+        coor[:, 1] = (coor[:, 1] - (img_size[1] - 1) / 2) * width_multiplier + (img_size[1] - 1) / 2
     return coor
 
 def rescale(coor, height_multiplier, width_multiplier, img_size):

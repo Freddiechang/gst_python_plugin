@@ -163,7 +163,7 @@ class ReverseWarp(GstBase.BaseTransform):
         sa = sa.clip(1, 255)
         s = (self.inheight/self.outheight, self.inwidth/self.outwidth)
         self.scale = salient_scale(mask, (self.outheight, self.outwidth), s)
-        w = lambda x, y: rescale(x, *s, (self.outheight, self.outwidth))
+        w = lambda x, y: rescale2(x, *s, (self.outheight, self.outwidth))
         self.mesh = Mesh(sa, mask, (self.inheight, self.inwidth), self.quad_size, w)
         self.mesh.V = self.mesh.warped_vertices
         self.mesh.generate_mapping(self.weight, (self.outheight, self.outwidth), (self.inheight, self.inwidth), self.scale)
@@ -181,7 +181,7 @@ class ReverseWarp(GstBase.BaseTransform):
                             popt = get_saliency_meta(inbuffer)
                         self.update_saliency_map(popt)
                     B = np.ndarray(shape = (self.outheight, self.outwidth, 3), dtype = np.uint8, buffer = outinfo.data)
-                    B[:, :, :] = self.mesh.reverse_warping(A)
+                    B[:, :, :] = self.mesh.reverse_warping_remap(A)
                     self.frame_count += 1
                 #A *= 0
             return Gst.FlowReturn.OK

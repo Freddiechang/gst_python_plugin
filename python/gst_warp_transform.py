@@ -187,9 +187,10 @@ class ExampleTransform(GstBase.BaseTransform):
         sa -= self.threshold
         sa = sa.clip(1, 255)
         self.scale = salient_scale(mask, (self.inheight, self.inwidth), s)
-        w = lambda x, y: rescale(x, *s, (self.inheight, self.inwidth))
+        w = lambda x, y: rescale2(x, *s, (self.inheight, self.inwidth))
         self.mesh = Mesh(sa, mask, (self.outheight, self.outwidth), self.quad_size, w)
         self.mesh.V = self.mesh.warped_vertices
+        print("generating mapping for frame: {}\n".format(frame_num))
         self.mesh.generate_mapping(self.weight, (self.inheight, self.inwidth), (self.outheight, self.outwidth), self.scale)
 
     def do_transform(self, inbuffer, outbuffer):
@@ -201,7 +202,7 @@ class ExampleTransform(GstBase.BaseTransform):
                     if self.frame_count % self.sal_interval == 0:
                         self.update_saliency_map(self.frame_count)
                     B = np.ndarray(shape = (self.outheight, self.outwidth, 3), dtype = np.uint8, buffer = outinfo.data)
-                    B[:, :, :] = self.mesh.coor_warping(A)
+                    B[:, :, :] = self.mesh.coor_warping_remap(A)
                     write_saliency_meta(outbuffer, self.gaussian.popt)
                     if self.popt_dir != "./":
                         np.save(join(self.popt_dir, "{}_popt.npy".format(self.frame_count)), self.gaussian.popt)
