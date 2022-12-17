@@ -63,7 +63,7 @@ if __name__ == "__main__":
     nfilelist = filelist
     method = '265'
     filelist = [(i, j, method) for i in nfilelist for j in [10, 18, 26, 32, 38, 44, 50]]
-    with open("vmaf.txt", 'w') as file:
+    with open("new_vmaf_265_2.txt", 'w') as file:
         file.write("Filename\tQuality\tProposed\t{}\n".format(method))
         for i in filelist:
             r = process(*i)

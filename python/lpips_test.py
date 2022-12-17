@@ -74,7 +74,7 @@ if __name__ == "__main__":
     with torch.no_grad():
         loss_fn = lpips.LPIPS(net='alex').cuda()
         filelist = [(i, j, loss_fn, method) for i in nfilelist for j in [10, 18, 26, 32, 38, 44, 50]]
-        with open("lpips_{}.txt".format(method), 'w') as file:
+        with open("new_lpips_{}_2.txt".format(method), 'w') as file:
             file.write("Filename\tQuality\tProposed\t{}\n".format(method))
             for i in filelist:
                 r = process(*i)
