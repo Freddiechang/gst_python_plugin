@@ -553,23 +553,24 @@ class Mesh():
         self.V = ret
 
     def generate_mapping(self, w_f, original_size, compressed_size, scale=None):
-        a = time.time()
+        # a = time.time()
         self.init_r(np.sum(self.Q_label != 0))
-        print("init_r: {}", time.time() - a)
-        a = time.time()
+        # print("init_r: {}", time.time() - a)
+        # a = time.time()
         self.compute_L2(w_f, self.saliency_map)
-        print("compute_L2: {}", time.time() - a)
-        a = time.time()
+        # print("compute_L2: {}", time.time() - a)
+        # a = time.time()
         self.V = self.warped_vertices.copy()
         self.compute_b2(w_f, self.saliency_map, scale)
-        print("compute_b2: {}", time.time() - a)
-        a = time.time()
+        # print("compute_b2: {}", time.time() - a)
+        # a = time.time()
         self.solve_and_update()
-        print("solve: {}", time.time() - a)
-        a = time.time()
+        # print("solve: {}", time.time() - a)
+        # a = time.time()
         self.update_r2()
-        print("update_r2: {}", time.time() - a)
-        a = time.time()
+        # print("update_r2: {}", time.time() - a)
+        # a = time.time()
+
         ##########################################
         # x += (self.width - 1) / 2 * (self.width - self.target_size[1]) / self.width
         # y += (self.height - 1) / 2 * (self.height - self.target_size[0]) / self.height
@@ -578,15 +579,16 @@ class Mesh():
         self.V -= (np.array([original_size]) - 1) /2 * (1 - s)
         #print(self.V.min(axis=0), self.V.max(axis=0))
         #self.V += (np.array([compressed_size]) - 1) / 2
-        print("null: {}", time.time() - a)
-        a = time.time()
+
+        # print("null: {}", time.time() - a)
+        # a = time.time()
         self.coor_mapping = self.quad_to_coor_pool()
-        print("q2c: {}", time.time() - a)
-        a = time.time()
+        # print("q2c: {}", time.time() - a)
+        # a = time.time()
         self.reverse_mapping = self.quad_to_coor_pool(reverse=True)
         self.interpolate_missing_coors()
-        print("rq2c: {}", time.time() - a)
-        a = time.time()
+        # print("rq2c: {}", time.time() - a)
+        # a = time.time()
     
     def coor_warping(self, img):
         """

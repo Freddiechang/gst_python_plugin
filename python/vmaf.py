@@ -12,8 +12,8 @@ def process(path: str, quality, method):
         filelist = [i for i in listdir(join("test", "out", "UCF_reverse_{}".format(method))) if i.startswith(filename) and i.endswith("q{:02d}.mp4".format(quality))]
         if len(filelist) == 1:
             videos.append("./test/out/UCF_reverse_{}/{}".format(method, filelist[0]))
-        if isfile("./test/out/UCF_original/{}.mp4".format(filename)):
-            videos.append("./test/out/UCF_original/{}.mp4".format(filename))
+        if isfile("./test_access_1/out/UCF_original/{}.mp4".format(filename)):
+            videos.append("./test_access_1/out/UCF_original/{}.mp4".format(filename))
         if isfile("./test/{}/UCF/{}_q{:02d}.mp4".format(method, filename, quality)):
             videos.append("./test/{}/UCF/{}_q{:02d}.mp4".format(method, filename, quality))
         if len(videos) != 3:
@@ -61,9 +61,16 @@ if __name__ == "__main__":
     filelist = sorted(listdir("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/"))
     filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/", i) for i in filelist]
     nfilelist = filelist
+    method = '264'
+    filelist = [(i, j, method) for i in nfilelist for j in [10, 18, 26, 32, 38, 44, 50]]
+    with open("new_vmaf_{}_2.txt".format(method), 'w') as file:
+        file.write("Filename\tQuality\tProposed\t{}\n".format(method))
+        for i in filelist:
+            r = process(*i)
+            file.write("{}\t{}\t{}\t{}\n".format(i[0].split('/')[-1], i[1], r[0], r[1]))
     method = '265'
     filelist = [(i, j, method) for i in nfilelist for j in [10, 18, 26, 32, 38, 44, 50]]
-    with open("new_vmaf_265_2.txt", 'w') as file:
+    with open("new_vmaf_{}_2.txt".format(method), 'w') as file:
         file.write("Filename\tQuality\tProposed\t{}\n".format(method))
         for i in filelist:
             r = process(*i)

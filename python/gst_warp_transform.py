@@ -202,7 +202,7 @@ class ExampleTransform(GstBase.BaseTransform):
                     if self.frame_count % self.sal_interval == 0:
                         self.update_saliency_map(self.frame_count)
                     B = np.ndarray(shape = (self.outheight, self.outwidth, 3), dtype = np.uint8, buffer = outinfo.data)
-                    B[:, :, :] = self.mesh.coor_warping_remap(A)
+                    B[:, :, :] = self.mesh.coor_warping(A)
                     write_saliency_meta(outbuffer, self.gaussian.popt)
                     if self.popt_dir != "./":
                         np.save(join(self.popt_dir, "{}_popt.npy".format(self.frame_count)), self.gaussian.popt)

@@ -181,7 +181,7 @@ class ReverseWarp(GstBase.BaseTransform):
                             popt = get_saliency_meta(inbuffer)
                         self.update_saliency_map(popt)
                     B = np.ndarray(shape = (self.outheight, self.outwidth, 3), dtype = np.uint8, buffer = outinfo.data)
-                    B[:, :, :] = self.mesh.reverse_warping_remap(A)
+                    B[:, :, :] = self.mesh.reverse_warping(A)
                     self.frame_count += 1
                 #A *= 0
             return Gst.FlowReturn.OK

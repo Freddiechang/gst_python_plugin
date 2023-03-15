@@ -11,9 +11,9 @@ gst-launch-1.0 filesrc location=./in.mp4 ! qtdemux ! avdec_h264 ! queue ! videoc
 def process(path: str, target_ratio, quad_size: int, sal_interval: int):
     if 'UCF' in path:
         if not isdir(join("test", "out", "UCF_raw")):
-            os.mkdir(join("test", "out", "UCF_raw"))
+            os.makedirs(join("test", "out", "UCF_raw"))
         if not isdir(join("test", "out", "UCF_compressed_raw")):
-            os.mkdir(join("test", "out", "UCF_compressed_raw"))
+            os.makedirs(join("test", "out", "UCF_compressed_raw"))
         filename = path.split('/')[-1]
         print("working on {}".format(filename))
         img_path = join(path, 'images')
@@ -50,9 +50,9 @@ def process(path: str, target_ratio, quad_size: int, sal_interval: int):
             if i in path:
                 dataset = i
         if not isdir(join("test", "out", dataset + '_raw')):
-            os.mkdir(join("test", "out", dataset + '_raw'))
+            os.makedirs(join("test", "out", dataset + '_raw'))
         if not isdir(join("test", "out", dataset + "_compressed_raw")):
-            os.mkdir(join("test", "out", dataset + "_compressed_raw"))
+            os.makedirs(join("test", "out", dataset + "_compressed_raw"))
         path = '/'.join(path.split('/')[:-2])
         map_path = join(path, 'annotation', filename, 'maps')
         command = "ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of default=nw=1:nk=1 {}".format(vid_path).split(" ")
@@ -103,7 +103,7 @@ def compress(path: str, target_ratio, quad_size: int, sal_interval: int):
             join("test/out/UCF_compressed_raw", filename + "_{}x{}".format(target_size[1], target_size[0]) + ".mkv"),
         ).split(' ')
         if not isdir(join("test", "out", "UCF_popt", filename)):
-            os.mkdir(join("test", "out", "UCF_popt", filename))
+            os.makedirs(join("test", "out", "UCF_popt", filename))
         #command = 'gst-launch-1.0 multifilesrc location={0} start-index=1 caps="image/png,framerate=10/1" ! pngdec ! queue ! videoconvert ! ExampleTransform width={1} height={2} quad_size={3} sal_dir={4} sal_interval={8} ! video/x-raw,width={1},height={2} ! ReverseWarp width={5} height={6} quad_size={3} sal_interval={8} ! videoconvert ! queue ! pngenc ! multifilesink location={7}'.format(
         #    join(img_path, t[0][:-7] + "%03d.png"), target_size[1], target_size[0], quad_size, map_path, width, height, join("test/out/UCF", filename + "_{}x{}".format(target_size[1], target_size[0]) + "_%d.png"), sal_interval
         #).split(' ')
@@ -191,7 +191,7 @@ def UCF_original(path: str):
             join("test", "out", "UCF_original", "{}.mp4".format(filename))
         )
         if not isdir(join("test", "out", "UCF_original")):
-            os.mkdir(join("test", "out", "UCF_original"))
+            os.makedirs(join("test", "out", "UCF_original"))
         p = sp.run(command.split(' '), capture_output=True)
         print(p.stdout.decode(), p.stderr.decode())
 
@@ -209,6 +209,6 @@ if __name__ == "__main__":
     # 0, 4, 12, 14, 21, 26
     # 12, 14, 21, 26 sal_interval 2
     
-    filelist = [(i, (0.7, 0.7), 8, 5) for i in nfilelist]
+    filelist = [(i, (0.9, 0.9), 8, 5) for i in nfilelist]
     with Pool(processes=1) as pool:
         pool.starmap(process, filelist)

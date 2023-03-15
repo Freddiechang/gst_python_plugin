@@ -100,7 +100,7 @@ def avc_and_hevc(path: str, quality, method):
             join("test", method, "UCF", "{}_q{:02d}.mp4".format(filename, quality))
             )
         if not isdir(join("test", method, "UCF")):
-            os.mkdir(join("test", method, "UCF"))
+            os.makedirs(join("test", method, "UCF"))
         if not isfile(join("test", method, "UCF", "{}_q{:02d}.mp4".format(filename, quality))):
             sp.run(command.split(' '))
         if isfile(join("test", method, "UCF", "{}_q{:02d}.mp4".format(filename, quality))):
@@ -134,7 +134,7 @@ def avc_and_hevc(path: str, quality, method):
             join("test", method, dataset, "{}_q{:02d}.mp4".format(filename, quality))
             )
         if not isdir(join("test", method, dataset)):
-            os.mkdir(join("test", method, dataset))
+            os.makedirs(join("test", method, dataset))
         if not isfile(join("test", method, dataset, "{}_q{:02d}.mp4".format(filename, quality))):
             sp.run(command.split(' '))
 
@@ -177,7 +177,7 @@ def avc_and_hevc2(path: str, quality, method):
             join("test", method, "UCF", "{}_q{:02d}.mp4".format(filename, quality))
             )
         if not isdir(join("test", method, "UCF")):
-            os.mkdir(join("test", method, "UCF"))
+            os.makedirs(join("test", method, "UCF"))
         if not isfile(join("test", method, "UCF", "{}_q{:02d}.mp4".format(filename, quality))):
             sp.run(command.split(' '))
         if isfile(join("test", method, "UCF", "{}_q{:02d}.mp4".format(filename, quality))):
@@ -211,7 +211,7 @@ def avc_and_hevc2(path: str, quality, method):
             join("test", method, dataset, "{}_q{:02d}.mp4".format(filename, quality))
             )
         if not isdir(join("test", method, dataset)):
-            os.mkdir(join("test", method, dataset))
+            os.makedirs(join("test", method, dataset))
         if not isfile(join("test", method, dataset, "{}_q{:02d}.mp4".format(filename, quality))):
             sp.run(command.split(' '))
 
@@ -247,8 +247,8 @@ def avc_and_hevc_match(path: str, quality, method):
         # compress the warped version
         filelist = [i for i in listdir(join("test", "out", "UCF_compressed_raw")) if i.startswith(filename) and i.endswith(".mkv")]
         if not isdir(join("test", "out", "UCF_compressed_from_raw" + "_" + method)):
-            os.mkdir(join("test", "out", "UCF_compressed_from_raw" + "_" + method))
-        command = "/home/shupeizhang/Codes/ffmpeg-5.0.1/ffmpeg -y -hide_banner -loglevel error -i {0} -c:v {1} -preset slow -crf {2} -pix_fmt yuv420p {3}".format(
+            os.makedirs(join("test", "out", "UCF_compressed_from_raw" + "_" + method))
+        command = "/home/shupeizhang/Codes/ffmpeg-5.0.1/ffmpeg -y -hide_banner -loglevel error -i {0} -c:v {1} -preset veryslow -crf {2} -pix_fmt yuv420p {3}".format(
             join("test", "out", "UCF_compressed_raw", filelist[0]),
             "libx{}".format(method),
             quality,
@@ -259,8 +259,8 @@ def avc_and_hevc_match(path: str, quality, method):
             print(p.stdout.decode(), p.stderr.decode())
         # compress the reverse warped version
         if not isdir(join("test", "out", "UCF_reverse" + "_" + method)):
-            os.mkdir(join("test", "out", "UCF_reverse" + "_" + method))
-        command = "/home/shupeizhang/Codes/ffmpeg-5.0.1/ffmpeg -y -hide_banner -loglevel error -i {0} -c:v {1} -preset slow -crf {2} -pix_fmt yuv420p {3}".format(
+            os.makedirs(join("test", "out", "UCF_reverse" + "_" + method))
+        command = "/home/shupeizhang/Codes/ffmpeg-5.0.1/ffmpeg -y -hide_banner -loglevel error -i {0} -c:v {1} -preset veryslow -crf {2} -pix_fmt yuv420p {3}".format(
             join("test", "out", "UCF_raw", filelist[0]),
             "libx{}".format(method),
             quality,
@@ -286,7 +286,7 @@ def avc_and_hevc_match(path: str, quality, method):
                 encoder
                 )
             if not isdir(join("test", method, "UCF")):
-                os.mkdir(join("test", method, "UCF"))
+                os.makedirs(join("test", method, "UCF"))
             if not isfile(join("test", method, "UCF", "{}_q{:02d}.mp4".format(filename, quality))):
                 p = sp.run(command.split(' '), capture_output=True)
                 print(p.stdout.decode(), p.stderr.decode())
@@ -336,9 +336,9 @@ def avc_and_hevc_match(path: str, quality, method):
         width, height = p.stdout.decode().split("\n")[:2]
         filelist = [i for i in listdir(join("test", "out", dataset +"_compressed_raw")) if i.startswith(filename) and i.endswith(".mkv")]
         if not isdir(join("test", "out", dataset + "_compressed_from_raw_" + method)):
-            os.mkdir(join("test", "out", dataset + "_compressed_from_raw_" + method))
+            os.makedirs(join("test", "out", dataset + "_compressed_from_raw_" + method))
         # compress the warped version
-        command = "/home/shupeizhang/Codes/ffmpeg-5.0.1/ffmpeg -hide_banner -loglevel error -i {0} -c:v libx264 -preset slow -crf {1} -pix_fmt yuv420p {2}".format(
+        command = "/home/shupeizhang/Codes/ffmpeg-5.0.1/ffmpeg -hide_banner -loglevel error -i {0} -c:v libx264 -preset veryslow -crf {1} -pix_fmt yuv420p {2}".format(
             join("test", "out", dataset + "_compressed_raw", filelist[0]),
             quality,
             join("test", "out", dataset + "_compressed_from_raw_" + method, filelist[0][:-4] + "_q{:02d}.mp4".format(quality))
@@ -348,8 +348,8 @@ def avc_and_hevc_match(path: str, quality, method):
             print(p.stdout.decode(), p.stderr.decode())
         # compress the reverse warped version
         if not isdir(join("test", "out", dataset + "_reverse" + "_" + method)):
-            os.mkdir(join("test", "out", dataset + "_reverse" + "_" + method))
-        command = "/home/shupeizhang/Codes/ffmpeg-5.0.1/ffmpeg -hide_banner -loglevel error -i {0} -c:v libx264 -preset slow -crf {1} -pix_fmt yuv420p {2}".format(
+            os.makedirs(join("test", "out", dataset + "_reverse" + "_" + method))
+        command = "/home/shupeizhang/Codes/ffmpeg-5.0.1/ffmpeg -hide_banner -loglevel error -i {0} -c:v libx264 -preset veryslow -crf {1} -pix_fmt yuv420p {2}".format(
             join("test", "out", dataset + "_raw", filelist[0]),
             quality,
             join("test", "out", dataset + "_reverse", filelist[0][:-4] + "_q{:02d}.mp4".format(quality))
@@ -372,7 +372,7 @@ def avc_and_hevc_match(path: str, quality, method):
                 encoder
                 )
             if not isdir(join("test", method, dataset)):
-                os.mkdir(join("test", method, dataset))
+                os.makedirs(join("test", method, dataset))
             if not isfile(join("test", method, dataset, "{}_q{:02d}.mp4".format(filename, quality))):
                 p = sp.run(command.split(' '), capture_output=True)
                 print(p.stdout.decode(), p.stderr.decode())
