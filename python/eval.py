@@ -352,14 +352,14 @@ def avc_and_hevc_match(path: str, quality, method):
         command = "/home/shupeizhang/Codes/ffmpeg-5.0.1/ffmpeg -hide_banner -loglevel error -i {0} -c:v libx264 -preset veryslow -crf {1} -pix_fmt yuv420p {2}".format(
             join("test", "out", dataset + "_raw", filelist[0]),
             quality,
-            join("test", "out", dataset + "_reverse", filelist[0][:-4] + "_q{:02d}.mp4".format(quality))
+            join("test", "out", dataset + "_reverse_" + method, filelist[0][:-4] + "_q{:02d}.mp4".format(quality))
         )
-        if not isfile(join("test", "out", dataset + "_reverse", filelist[0][:-4] + "_q{:02d}.mp4".format(quality))):
+        if not isfile(join("test", "out", dataset + "_reverse_" + method, filelist[0][:-4] + "_q{:02d}.mp4".format(quality))):
             p = sp.run(command.split(' '), capture_output=True)
             print(p.stdout.decode(), p.stderr.decode())
-        filelist = [i for i in listdir(join("test", "out", dataset +"_compressed_" + method)) if i.startswith(filename) and i.endswith("q{:02d}.mp4".format(quality))]
+        filelist = [i for i in listdir(join("test", "out", dataset +"_compressed_from_raw_" + method)) if i.startswith(filename) and i.endswith("q{:02d}.mp4".format(quality))]
         if len(filelist) == 1:
-            command = "ffprobe -v error -select_streams v:0 -show_entries stream=bit_rate -of default=nw=1:nk=1 {}".format(join("test", "out", dataset + "_compressed", filelist[0])).split(" ")
+            command = "ffprobe -v error -select_streams v:0 -show_entries stream=bit_rate -of default=nw=1:nk=1 {}".format(join("test", "out", dataset + "_compressed_from_raw_" + method, filelist[0])).split(" ")
             p = sp.run(command, capture_output=True)
             bitrate = int(p.stdout.decode())
             #pass 1

@@ -496,7 +496,7 @@ class Mesh():
         return mapping
 
 
-    def plot_mesh(self):
+    def plot_mesh(self, save_path=None):
         """
         plot the mesh
         self: mesh
@@ -512,6 +512,8 @@ class Mesh():
             plt.plot(tmp[:, c][:, 1], tmp[:, c][:, 0], c='gray')
 
         plt.gca().invert_yaxis()
+        if save_path is not None:
+            plt.savefig(save_path)
         plt.show()
     
     def solve_and_update(self):

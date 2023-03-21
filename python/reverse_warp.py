@@ -95,7 +95,7 @@ class ReverseWarp(GstBase.BaseTransform):
     def __init__(self) -> None:
         self.outheight = 1
         self.outwidth = 1
-        self.threshold = 1
+        self.threshold = 30
         self.weight = 5
         self.quad_size = 8
         self.frame_count = 0
@@ -181,7 +181,7 @@ class ReverseWarp(GstBase.BaseTransform):
                             popt = get_saliency_meta(inbuffer)
                         self.update_saliency_map(popt)
                     B = np.ndarray(shape = (self.outheight, self.outwidth, 3), dtype = np.uint8, buffer = outinfo.data)
-                    B[:, :, :] = self.mesh.reverse_warping(A)
+                    B[:, :, :] = self.mesh.reverse_warping_remap(A)
                     self.frame_count += 1
                 #A *= 0
             return Gst.FlowReturn.OK
