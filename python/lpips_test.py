@@ -14,8 +14,8 @@ def process(path: str, quality, loss_fn, method):
         filelist = [i for i in listdir(join("test", "out", "UCF_reverse_{}".format(method))) if i.startswith(filename) and i.endswith("q{:02d}.mp4".format(quality))]
         if len(filelist) == 1:
             videos.append("./test/out/UCF_reverse_{}/{}".format(method, filelist[0]))
-        if isfile("./test_access_1/out/UCF_original/{}.mp4".format(filename)):
-            videos.append("./test_access_1/out/UCF_original/{}.mp4".format(filename))
+        if isfile("./test/out/UCF_original/{}.mp4".format(filename)):
+            videos.append("./test/out/UCF_original/{}.mp4".format(filename))
         if isfile("./test/{}/UCF/{}_q{:02d}.mp4".format(method, filename, quality)):
             videos.append("./test/{}/UCF/{}_q{:02d}.mp4".format(method, filename, quality))
         if len(videos) != 3:
@@ -67,8 +67,8 @@ def process(path: str, quality, loss_fn, method):
 
 
 if __name__ == "__main__":
-    filelist = sorted(listdir("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/"))
-    filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/", i) for i in filelist]
+    filelist = sorted(listdir("UCF/training/"))
+    filelist = [join("UCF/training/", i) for i in filelist]
     nfilelist = filelist
     method = '264'
     with torch.no_grad():

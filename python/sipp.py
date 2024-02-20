@@ -31,7 +31,7 @@ def process(path: str):
             gray_im = im.convert('L')
             gray_im.save(filename + ".png")
             im.close()
-            command = '/mnt/hdd1/lxc-hdd1/shupei/sipp/bin/sipp -in={}'.format(filename + ".png")
+            command = 'sipp/bin/sipp -in={}'.format(filename + ".png")
             r = sp.run(command, shell=True, capture_output=True)
             tmp_score.append(float(re.findall("\d+\.\d+", r.stdout.decode().split('\n')[-2])[0]))
             flag, frame = video_cap.read()
@@ -46,8 +46,8 @@ def process(path: str):
 
 
 if __name__ == "__main__":
-    filelist = sorted(listdir("/home/shupei2/data/Datasets/saliency/UCF/training/"))
-    filelist = [join("/home/shupei2/data/Datasets/saliency/UCF/training/", i) for i in filelist]
+    filelist = sorted(listdir("UCF/training/"))
+    filelist = [join("UCF/training/", i) for i in filelist]
     nfilelist = filelist
     with Pool(8) as p:
         results = p.map(process, nfilelist)

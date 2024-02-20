@@ -9,13 +9,13 @@ def process(path: str, quality, method):
     if 'UCF' in path:
         filename = path.split('/')[-1]
         print("working on {}".format(filename))
-        filelist = [i for i in listdir(join("test", "out", "UCF_reverse_{}".format(method))) if i.startswith(filename) and i.endswith("q{:02d}.mp4".format(quality))]
+        filelist = [i for i in listdir(join("test9090", "out", "UCF_reverse_{}".format(method))) if i.startswith(filename) and i.endswith("q{:02d}.mp4".format(quality))]
         if len(filelist) == 1:
-            videos.append("./test/out/UCF_reverse_{}/{}".format(method, filelist[0]))
+            videos.append("./test9090/out/UCF_reverse_{}/{}".format(method, filelist[0]))
         if isfile("./test_access_1/out/UCF_original/{}.mp4".format(filename)):
             videos.append("./test_access_1/out/UCF_original/{}.mp4".format(filename))
-        if isfile("./test/{}/UCF/{}_q{:02d}.mp4".format(method, filename, quality)):
-            videos.append("./test/{}/UCF/{}_q{:02d}.mp4".format(method, filename, quality))
+        if isfile("./test9090/{}/UCF/{}_q{:02d}.mp4".format(method, filename, quality)):
+            videos.append("./test9090/{}/UCF/{}_q{:02d}.mp4".format(method, filename, quality))
         if len(videos) != 3:
             print("File {} is not complete.\n {}\n".format(filename, videos))
             return -1
@@ -40,14 +40,14 @@ def process(path: str, quality, method):
             return -1
 
     scores = []
-    command = '/home/shupeizhang/Codes/ffmpeg-5.0.1/ffmpeg -i {} -i {} -lavfi "[0][1]libvmaf=model_path=/home/shupeizhang/Codes/ffmpeg-5.0.1/model/vmaf_v0.6.1.json" -hide_banner -loglevel info  -f null -'.format(
+    command = 'ffmpeg -i {} -i {} -lavfi "[0][1]libvmaf=phone_model=true:model_path=/home/shupeizhang/Codes/ffmpeg-5.0.1/model/vmaf_v0.6.1.json" -hide_banner -loglevel info  -f null -'.format(
         videos[0],
         videos[1]
     )
     r = sp.run(command, shell=True, capture_output=True)
     scores.append(float(re.findall("\d+\.\d+", r.stderr.decode().split('\n')[-2])[0]))
 
-    command = '/home/shupeizhang/Codes/ffmpeg-5.0.1/ffmpeg -i {} -i {} -lavfi "[0][1]libvmaf=model_path=/home/shupeizhang/Codes/ffmpeg-5.0.1/model/vmaf_v0.6.1.json" -hide_banner -loglevel info  -f null -'.format(
+    command = 'ffmpeg -i {} -i {} -lavfi "[0][1]libvmaf=phone_model=true:model_path=/home/shupeizhang/Codes/ffmpeg-5.0.1/model/vmaf_v0.6.1.json" -hide_banner -loglevel info  -f null -'.format(
         videos[2],
         videos[1]
     )
@@ -58,8 +58,8 @@ def process(path: str, quality, method):
 
 
 if __name__ == "__main__":
-    filelist = sorted(listdir("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/"))
-    filelist = [join("/home/shupeizhang/Codes/Datasets/saliency/UCF/training/", i) for i in filelist]
+    filelist = sorted(listdir("UCF/training/"))
+    filelist = [join("UCF/training/", i) for i in filelist]
     nfilelist = filelist
     method = '264'
     filelist = [(i, j, method) for i in nfilelist for j in [10, 18, 26, 32, 38, 44, 50]]
