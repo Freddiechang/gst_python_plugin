@@ -11,6 +11,18 @@ A novel video compression method which incorporates the non-uniform spatial reso
 - Configure Gstreamer plugin lib path
 
 See details [here](https://freddiechang.github.io/gstreamer_setup).
+# File Organization
+```
+.
+├── python/
+│   ├── warp.py (helper functions for image warping)
+│   ├── gst_warp_transform.py (gst image warp plugin)
+│   ├── reverse_warp.py (gst reverse image warp plugin)
+│   ├── gst_saliency_info_meta.py (gst gaussian distribution parameter info plugin)
+│   └── ... (other files for evaluation)
+├── saliency_meta_c (c code for gaussian distribution parameter info plugin)
+└── tsnnls (library for [least square solver](https://jasoncantarella.com/wordpress/software/tsnnls/))
+```
 # Purge gstreamer plugin cache to reload the python plugin
 ```
 rm -rf ~/.cache/gstreamer-1.0
