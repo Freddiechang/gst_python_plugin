@@ -21,8 +21,9 @@ See details [here](https://freddiechang.github.io/gstreamer_setup).
 │   ├── gst_saliency_info_meta.py (gst gaussian distribution parameter info plugin)
 │   └── ... (other files for evaluation)
 ├── saliency_meta_c (c code for gaussian distribution parameter info plugin)
-└── tsnnls (library for [least square solver](https://jasoncantarella.com/wordpress/software/tsnnls/))
+└── tsnnls (cython code for calling tsnnls in python)
 ```
+[tsnnls](https://jasoncantarella.com/wordpress/software/tsnnls/) is a least square solver by J Cantarella.
 # Purge gstreamer plugin cache to reload the python plugin
 ```
 rm -rf ~/.cache/gstreamer-1.0
