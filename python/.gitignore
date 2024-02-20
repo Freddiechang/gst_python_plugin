@@ -6,4 +6,7 @@ audioplot.py.back
 py_audiotestsrc.py
 sinkelement.py
 .ipynb_checkpoints
-test
+test/
+test*/
+*.txt
+test_access_1

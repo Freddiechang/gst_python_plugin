@@ -45,11 +45,12 @@ def ewpsnr(src_path: str, ref_path: str, saliency_map_path: str, saliency_ext='p
         if sal_frame.shape != (src_frame.shape[0], src_frame.shape[1]):
             sal_frame = cv2.resize(sal_frame, (src_frame.shape[1], src_frame.shape[0]))
         sal_frame = np.expand_dims(sal_frame, 2)
+        src_frame, ref_frame = cv2.cvtColor(src_frame, cv2.COLOR_BGR2YUV), cv2.cvtColor(ref_frame, cv2.COLOR_BGR2YUV)
+        src_frame, ref_frame = src_frame.astype(float), ref_frame.astype(float)
         sal_frame = sal_frame.astype(float)
-        sal_frame = sal_frame / sal_frame.sum() * src_frame.shape[1] * src_frame.shape[0]
-        total_pix = src_frame.shape[0] * src_frame.shape[1]
-        mse = (sal_frame * np.square(src_frame - ref_frame)).sum() / total_pix
-        psnr = 10 * np.log10(255 * 255 / mse)
+        sal_frame = sal_frame / sal_frame.sum() * src_frame.shape[0] * src_frame.shape[1]
+        mse = (sal_frame * np.square(src_frame - ref_frame)).sum() / sal_frame.sum() / 3
+        psnr = 10.0 * np.log10(255.0 * 255.0 / mse)
         if not np.isnan(psnr):
             total_ewpsnr += psnr
             count_nnan += 1
